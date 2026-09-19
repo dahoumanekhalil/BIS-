@@ -1,0 +1,645 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String
+  tagline           String?
+  description       String?
+  startsAt          DateTime
+  endsAt            DateTime
+  city              String
+  venue             String
+  country           String
+  expectedAttendees Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  sessions     Session[]
+  speakers     Speaker[]
+  partners     Partner[]
+  spaces       Space[]
+  participants Participant[]
+  applications Application[]
+}
+
+enum SessionType {
+  KEYNOTE
+  TALK
+  PANEL
+  FIRESIDE
+  WORKSHOP
+  MASTERCLASS
+  MASTERMIND
+  PITCH
+  SHOWCASE
+}
+
+enum SessionCategory {
+  INNOVATION
+  ENTREPRENEURSHIP
+  TECHNOLOGY
+  IMPACT
+  CULTURE
+  INVESTMENT
+  LEADERSHIP
+}
+
+model Session {
+  id            String           @id @default(cuid())
+  eventId       String
+  event         Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  slug          String           @unique
+  title         String
+  summary       String?          @db.Text
+  type          SessionType      @default(KEYNOTE)
+  category      SessionCategory  @default(INNOVATION)
+  startsAt      DateTime
+  durationMin   Int              @default(45)
+  stage         String?
+  isHighlighted Boolean          @default(false)
+  order         Int              @default(0)
+  speakers      SessionSpeaker[]
+  spaceId       String?
+  space         Space?           @relation(fields: [spaceId], references: [id])
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([eventId, startsAt])
+}
+
+model Speaker {
+  id            String           @id @default(cuid())
+  eventId       String
+  event         Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  slug          String           @unique
+  fullName      String
+  title         String
+  organization  String
+  country       String?
+  bio           String?          @db.Text
+  photoUrl      String?
+  linkedin      String?
+  twitter       String?
+  website       String?
+  isHighlighted Boolean          @default(false)
+  order         Int              @default(0)
+  adminUserId   String?          @unique
+  adminUser     AdminUser?       @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  sessions      SessionSpeaker[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([eventId])
+}
+
+model SessionSpeaker {
+  sessionId String
+  speakerId String
+  role      String  @default("SPEAKER")
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  speaker   Speaker @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, speakerId])
+}
+
+enum PartnerTier {
+  PRESENTING
+  PLATINUM
+  GOLD
+  SILVER
+  ECOSYSTEM
+  MEDIA
+}
+
+model Partner {
+  id        String      @id @default(cuid())
+  eventId   String
+  event     Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  slug      String      @unique
+  name      String
+  tier      PartnerTier @default(ECOSYSTEM)
+  logoUrl   String?
+  website   String?
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  @@index([eventId, tier])
+}
+
+model Space {
+  id          String    @id @default(cuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  slug        String    @unique
+  name        String
+  headline    String
+  description String    @db.Text
+  color       String    @default("#1748E6")
+  icon        String?
+  imageUrl    String?
+  order       Int       @default(0)
+  sessions    Session[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum RegistrationType {
+  ATTENDEE
+  STARTUP
+  INVESTOR
+  MEDIA
+  PARTNER
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum RegistrationTier {
+  VVIP
+  VIP
+  VISITOR
+  CONTENT_CREATOR
+  IMPACT_MAKER
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+// Distinguishes a personal visitor registration from a company/organization
+// registration. Purely informational — it does not change RegistrationType
+// semantics or downstream ops logic.
+enum RegistrationProfile {
+  VISITOR
+  COMPANY
+}
+
+// The user's chosen way to participate in BIS 2026 — captured at Step 2 of
+// the unified /register journey. Distinct from `RegistrationType` (which
+// remains ATTENDEE|STARTUP|INVESTOR|MEDIA|PARTNER for existing ops logic).
+// NULL means the user has not yet completed Step 2.
+enum ParticipationChoice {
+  VISITOR
+  SPONSOR
+  PARTNER
+  SPEAKER
+  CONTENT_CREATOR
+}
+
+model Participant {
+  id               String             @id @default(cuid())
+  eventId          String
+  event            Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  firstName        String
+  lastName         String
+  email            String
+  // Nullable — the account-signup flow bootstraps a Participant without a
+  // phone number. It's collected at Step 3 of the /register wizard.
+  phone            String?
+  organization     String?
+  jobTitle         String?
+  country          String             @default("Algérie")
+  registrationType RegistrationType   @default(ATTENDEE)
+  status           RegistrationStatus @default(PENDING)
+
+  // Optional link back to the AccountUser (public login system). Populated
+  // when a Participant is bootstrapped from an authenticated account signup.
+  accountUserId String?
+  accountUser   AccountUser? @relation(fields: [accountUserId], references: [id], onDelete: SetNull)
+
+  // Company registration additions — nullable/defaulted, additive only.
+  profile         RegistrationProfile @default(VISITOR)
+  companyIndustry String?
+  companyWebsite  String?
+  companySize     String?
+
+  // Chosen participation type (Step 2 of the unified journey). NULL while
+  // onboarding is still in progress or if the user abandoned before Step 2.
+  participationChoice ParticipationChoice?
+
+  onboardingSessions OnboardingSession[]
+  applications       Application[]
+
+  // Badge / access — see the ACCESS & BADGES section below.
+  credentials       BadgeCredential[]
+  accessPermissions ParticipantAccess[]
+
+  // Ops fields (admin platform)
+  tier          RegistrationTier?
+  gate          String?
+  paymentStatus PaymentStatus     @default(UNPAID)
+  paymentAmount Int? // in DZD (integer) — no card data stored
+  paymentRef    String?
+  paidAt        DateTime?
+  ticketCode    String?           @unique
+  checkedInAt   DateTime?
+  checkedInGate String?
+
+  checkIns CheckIn[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, email])
+  @@index([eventId, createdAt])
+  @@index([tier])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([profile])
+  @@index([participationChoice])
+  @@index([accountUserId])
+}
+
+// Short-lived server-side state carrier for the multi-step /register wizard.
+// After Step 1 (basic registration) we create a Participant and this session
+// pointing at it. The cookie holds an opaque token — the DB stores tokenHash.
+// Steps 2+ read the cookie and resolve back to the Participant.
+model OnboardingSession {
+  id            String      @id @default(cuid())
+  tokenHash     String      @unique
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  expiresAt     DateTime
+
+  @@index([expiresAt])
+  @@index([participantId])
+}
+
+// --------------------------- BE A PART / APPLICATIONS ---------------------------
+
+enum ApplicationType {
+  SPONSOR
+  PARTNER
+  SPEAKER
+  CONTENT_CREATOR
+}
+
+enum ApplicationStatus {
+  RECEIVED
+  UNDER_REVIEW
+  CONTACTED
+  APPROVED
+  REJECTED
+}
+
+// Represents a "Be a part" application. Kept intentionally separate from
+// Participant / Registration — application review status and registration
+// status are different domains.
+model Application {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Every Application built through the unified /register journey has a
+  // Participant. Kept nullable so an admin-created / legacy row cannot break
+  // the model. ondelete SetNull: preserves history if a Participant is purged.
+  participantId String?
+  participant   Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  type   ApplicationType
+  status ApplicationStatus @default(RECEIVED)
+
+  // Contact person (all types)
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+  country   String  @default("Algérie")
+  position  String?
+
+  // Organization info (SPONSOR / PARTNER always; SPEAKER / CONTENT_CREATOR optional)
+  organization String?
+  website      String?
+  industry     String?
+
+  // Speaker / Content Creator optional media (URLs only — file storage TBD)
+  photoUrl String?
+  logoUrl  String?
+  linkedin String?
+
+  // Free-form message shown to the reviewer
+  message String? @db.Text
+
+  // Role-specific structured payload, validated per ApplicationType by Zod
+  // at write time. Reader-side Zod schemas live in lib/applications.ts.
+  details Json
+
+  // Review fields — separate from RegistrationStatus.
+  reviewNotes  String?   @db.Text
+  reviewedById String?
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One application per (participant, role) — defensive uniqueness that also
+  // closes the check-then-act race in submitParticipation.
+  @@unique([participantId, type])
+  @@index([eventId, type, status])
+  @@index([status])
+  @@index([type])
+  @@index([email])
+  @@index([createdAt])
+  @@index([participantId])
+}
+
+model SiteContent {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// --------------------------- PUBLIC ATTENDEE ACCOUNTS ---------------------------
+// Separate from AdminUser: no roles, no back-office access.
+
+model AccountUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  firstName    String
+  lastName     String
+  passwordHash String
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions     AccountSession[]
+  participants Participant[]
+}
+
+model AccountSession {
+  id        String      @id @default(cuid())
+  userId    String
+  user      AccountUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String      @unique
+  createdAt DateTime    @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// --------------------------- ACCESS & BADGES ---------------------------
+// Physical venue access model. The BIS 2026 venue has one MAIN_ENTRANCE and
+// five ROOMs; each is a distinct AccessPoint with its own operator team and
+// scanner instance. A participant's per-room permissions live in
+// ParticipantAccess. A participant's QR credential is a BadgeCredential.
+// The QR itself is an opaque random token; only its sha256 is stored, so a
+// database leak does not hand out working QR codes.
+
+enum AccessPointType {
+  MAIN_ENTRANCE
+  ROOM
+}
+
+enum BadgeStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model AccessPoint {
+  id        String          @id @default(cuid())
+  slug      String          @unique
+  name      String
+  type      AccessPointType
+  active    Boolean         @default(true)
+  order     Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  permissions ParticipantAccess[]
+  checkIns    CheckIn[]
+
+  @@index([type])
+  @@index([active])
+}
+
+// A BadgeCredential is a QR credential issued to a Participant. The raw
+// token is generated once at issuance, encoded into the QR, and never stored
+// server-side — only its sha256 hash is persisted. Rotation preserves
+// history: revoke the old row, insert a new ACTIVE row with rotatedFromId
+// pointing at the previous one. A partial unique index on
+// (participantId) WHERE status = 'ACTIVE' is created out-of-band via
+// scripts/apply-badge-index.ts because Prisma's DSL does not support
+// partial unique constraints. The service layer must also enforce
+// single-active inside a transaction.
+model BadgeCredential {
+  id            String      @id @default(cuid())
+  participantId String
+  tokenHash     String      @unique
+  status        BadgeStatus @default(ACTIVE)
+  issuedAt      DateTime    @default(now())
+  expiresAt     DateTime?
+  revokedAt     DateTime?
+  revokedReason String?
+  revokedById   String?
+  rotatedFromId String?
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  // Self-relation chain: previous credential this one replaced, and any
+  // credentials that were later rotated from this one.
+  rotatedFrom BadgeCredential?  @relation("CredentialRotation", fields: [rotatedFromId], references: [id])
+  rotatedTo   BadgeCredential[] @relation("CredentialRotation")
+
+  checkIns CheckIn[]
+
+  @@index([participantId])
+  @@index([participantId, status])
+  @@index([status])
+}
+
+// Per-participant, per-access-point permission. Existence with granted=true
+// means the participant is authorized for that AccessPoint. Absence means
+// NOT AUTHORIZED — the default. Business rule: room access is never
+// auto-granted; an authorized admin must grant it explicitly.
+model ParticipantAccess {
+  participantId String
+  accessPointId String
+  granted       Boolean   @default(true)
+  grantedById   String?
+  grantedAt     DateTime  @default(now())
+  revokedAt     DateTime?
+  revokedById   String?
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  accessPoint AccessPoint @relation(fields: [accessPointId], references: [id], onDelete: Cascade)
+
+  @@id([participantId, accessPointId])
+  @@index([accessPointId])
+  @@index([granted])
+}
+
+// --------------------------- ADMIN / OPERATIONS ---------------------------
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  SALES
+  REGISTRATION_MANAGER
+  CHECKIN_OPERATOR
+  CONTENT_MANAGER
+  SPONSOR_MANAGER
+  FINANCE
+  ANALYTICS
+  VIEWER
+}
+
+enum AdminStatus {
+  ACTIVE
+  DISABLED
+}
+
+model AdminUser {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  passwordHash String
+  role         AdminRole   @default(VIEWER)
+  status       AdminStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  sessions  AdminSession[]
+  auditLogs AuditLog[]
+  checkIns  CheckIn[]
+  speaker   Speaker?
+
+  @@index([role])
+  @@index([status])
+}
+
+// Admin session record. The raw cookie token is generated at login and
+// stored ONLY in the client's HTTP-only cookie; the database keeps only
+// its sha256 hash (Phase 15). A DB dump cannot be directly replayed as
+// admin cookies — an attacker would need to pre-image the sha256 first,
+// which is infeasible against a 256-bit random token.
+//
+// SECURITY: never persist the raw token here. Every read/write path
+// (lib/admin/auth.ts, adminLogout, speakerLogout, dev-only smoke) hashes
+// the cookie value before it reaches Prisma.
+model AdminSession {
+  id        String    @id @default(cuid())
+  userId    String
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id        String     @id @default(cuid())
+  userId    String?
+  user      AdminUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String // "registrant.update", "checkin.validate", …
+  entity    String? // "Participant"
+  entityId  String?
+  meta      Json?
+  createdAt DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([entity, entityId])
+}
+
+enum CheckInResult {
+  VALID
+  ALREADY_CHECKED_IN
+  WRONG_GATE
+  WRONG_TIME
+  CANCELLED
+  UNKNOWN
+  UNPAID
+}
+
+model CheckIn {
+  id            String        @id @default(cuid())
+  participantId String?
+  participant   Participant?  @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  operatorId    String?
+  operator      AdminUser?    @relation(fields: [operatorId], references: [id], onDelete: SetNull)
+  ticketCode    String
+  gate          String
+  result        CheckInResult
+  reason        String?
+  scannedAt     DateTime      @default(now())
+
+  // New: link to the AccessPoint the scanner is bound to. Nullable so legacy
+  // rows (pre-migration) remain valid, and so the existing manual-code flow
+  // that has no AccessPoint context continues to work. SetNull on delete
+  // preserves the historical scan record if an AccessPoint is retired.
+  accessPointId String?
+  accessPoint   AccessPoint? @relation(fields: [accessPointId], references: [id], onDelete: SetNull)
+
+  // New: which BadgeCredential presented the QR. Nullable for the manual code
+  // path. SetNull preserves scan history if a credential row is deleted (in
+  // practice we only revoke, we do not delete — this is defensive).
+  credentialId String?
+  credential   BadgeCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+
+  @@index([participantId])
+  @@index([scannedAt])
+  @@index([result])
+  @@index([accessPointId])
+  @@index([accessPointId, scannedAt])
+  @@index([credentialId])
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model EmailMessage {
+  id            String      @id @default(cuid())
+  participantId String?
+  sentByUserId  String?
+  toEmail       String
+  toName        String?
+  subject       String
+  body          String      @db.Text
+  html          String?     @db.Text
+  templateKey   String?
+  status        EmailStatus @default(QUEUED)
+  errorMessage  String?
+  createdAt     DateTime    @default(now())
+  sentAt        DateTime?
+
+  @@index([participantId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model RolePermissionOverride {
+  id         String    @id @default(cuid())
+  role       AdminRole
+  permission String
+  granted    Boolean
+  updatedAt  DateTime  @updatedAt
+  updatedBy  String?
+
+  @@unique([role, permission])
+  @@index([role])
+}

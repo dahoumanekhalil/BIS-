@@ -1,0 +1,58 @@
+{
+  "name": "getplus-summit-2026",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "test:badge": "node --conditions=react-server --import tsx --test scripts/badge-credential.test.ts",
+    "test:rbac": "node --conditions=react-server --import tsx --test scripts/rbac.test.ts",
+    "test:access": "node --conditions=react-server --import tsx --test scripts/access-semantics.test.ts",
+    "test:qr": "node --conditions=react-server --import tsx --test scripts/qr.test.ts",
+    "test:history": "node --conditions=react-server --import tsx --test scripts/access-history.test.ts",
+    "test:access-admin": "node --conditions=react-server --import tsx --test scripts/access-admin.test.ts",
+    "test:access-points": "node --conditions=react-server --import tsx --test scripts/access-points.test.ts",
+    "test:scanner": "node --conditions=react-server --import tsx --test scripts/scanner.test.ts",
+    "test:main-entrance": "node --conditions=react-server --import tsx --test scripts/main-entrance.test.ts",
+    "test:room": "node --conditions=react-server --import tsx --test scripts/room.test.ts",
+    "test:admin-login": "node --conditions=react-server --import tsx --test scripts/admin-login.test.ts",
+    "test:admin-session": "node --conditions=react-server --import tsx --test scripts/admin-session.test.ts",
+    "test:admin-scan": "node --conditions=react-server --import tsx --test scripts/admin-scan.test.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "clsx": "^2.1.1",
+    "html5-qrcode": "^2.3.8",
+    "next": "15.0.3",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.15.0",
+    "eslint-config-next": "15.0.3",
+    "postcss": "^8.4.49",
+    "prisma": "^5.22.0",
+    "server-only": "^0.0.1",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

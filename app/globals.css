@@ -1,0 +1,214 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cobalt: #2453e0;
+  --cobalt-700: #1339b7;
+  --navy: #111827;
+  --lime: #b8e62e;
+  --frost: #f8faf9;
+  --ink: #0a0a0a;
+  --line: #e6e8ed;
+  --ticker-height: 28px;
+  --nav-height: 68px;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--ticker-height) + var(--nav-height) + 16px);
+}
+
+body {
+  color: var(--ink);
+  background-color: #ffffff;
+  font-feature-settings: "ss01";
+}
+
+/* Full-bleed sections (Hero, FinalCTA) can reclaim the header padding
+   applied by SiteFrame on public pages and let the header float over their
+   cobalt background. */
+main > .hero-flush {
+  margin-top: calc(-1 * (var(--ticker-height) + var(--nav-height)));
+}
+
+::selection {
+  background-color: var(--lime);
+  color: var(--ink);
+}
+
+/* ───────────────────────────────────────────────────────────────────────
+   Print rules for the /compte/badge experience (Phase 5).
+
+   When the attendee hits Ctrl+P (or clicks "Imprimer mon badge"), we want
+   the browser to render ONLY the badge card, centered on the page, at
+   physical-badge proportions. Everything else — nav, ticker, sub-tabs,
+   surrounding cards, footer — collapses out of the flow.
+
+   Implementation:
+     • .print-hide  → display:none in print. Applied to anything that must
+                      not appear on paper (navbar, ticker, footer, compte
+                      header / tabs, side controls, alerts).
+     • .print-badge → the badge card itself. Fixed to fill the page and
+                      recentered; its `aspect-[3/4]` is preserved.
+   No JS is involved. The page prints exactly what the attendee is looking
+   at, and the QR that is currently visible is what ends up on paper.
+   ─────────────────────────────────────────────────────────────────────── */
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+  body > * {
+    /* Kill fixed positioning from the ticker/navbar so nothing overlaps
+       the printed badge. */
+    position: static !important;
+  }
+  .print-hide,
+  header,
+  footer,
+  nav[aria-label="Navigation espace personnel"],
+  nav[aria-label="Navigation principale"],
+  [aria-label="En-tête espace personnel"],
+  [role="status"] {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-badge {
+    /* Recentre and constrain so it prints cleanly on A5/A6 stock; the
+       card keeps its 3:4 ratio and the QR keeps its scannable dimensions. */
+    margin: 12mm auto !important;
+    max-width: 90mm !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  @page {
+    margin: 8mm;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-[1280px];
+    padding-inline: clamp(1.25rem, 5vw, 3.5rem);
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70;
+  }
+  .eyebrow-invert {
+    @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70;
+  }
+  .btn-lime {
+    @apply inline-flex items-center justify-center gap-2 rounded-btn bg-lime px-5 py-2.5 text-[13px] font-semibold text-ink transition-all duration-200 hover:bg-lime-600;
+  }
+  .btn-lime-lg {
+    @apply inline-flex items-center justify-center gap-2 rounded-btn bg-lime px-6 py-3.5 text-sm font-semibold text-ink transition-all duration-200 hover:bg-lime-600;
+  }
+  .btn-outline-white {
+    @apply inline-flex items-center justify-center gap-2 rounded-btn border border-white/25 bg-transparent px-6 py-3.5 text-sm font-medium text-white transition-all duration-200 hover:border-white/50 hover:bg-white/5;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-btn border border-line bg-white px-5 py-2.5 text-[13px] font-medium text-ink transition-all duration-200 hover:border-ink/30;
+  }
+  .chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-3.5 py-1.5 text-[12px] font-medium text-white/85 backdrop-blur;
+  }
+  .card {
+    @apply rounded-card border border-line bg-white;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .grid-lines-dark {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+  .noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@layer utilities {
+  @keyframes auth-content {
+    0% {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    40% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes auth-grid {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(-32px, -32px, 0);
+    }
+  }
+  @keyframes auth-float-a {
+    0%, 100% {
+      transform: translate3d(-50%, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(-50%, 22px, 0) scale(1.05);
+    }
+  }
+  @keyframes auth-float-b {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(30px, -18px, 0) scale(1.08);
+    }
+  }
+  @keyframes contact-drift-a {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(-40px, 30px, 0) scale(1.08);
+    }
+  }
+  @keyframes contact-drift-b {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(40px, -25px, 0) scale(1.1);
+    }
+  }
+  @keyframes contact-check {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
