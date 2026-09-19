@@ -10,6 +10,8 @@ node_modules
 *.log
 .vercel
 next-env.d.ts
-.docs/
-./docs/
+# Internal planning / brand / process docs — not tracked in git.
+# Every file under docs/ (implementation logs, brand guidelines, plans)
+# stays local. Move future "notes" files here to keep them out of the
+# repository automatically.
 docs/
