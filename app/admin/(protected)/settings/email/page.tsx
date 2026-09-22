@@ -39,6 +39,12 @@ export default async function AdminSettingsEmailPage() {
                 : "Non configuré"}
             </span>
             <span className="text-[11.5px] text-ink/55">
+              Provider :{" "}
+              <span className="font-semibold text-ink/70">
+                {view.provider === "resend" ? "Resend" : "SMTP"}
+              </span>
+            </span>
+            <span className="text-[11.5px] text-ink/55">
               Source : <span className="font-semibold text-ink/70">{view.source}</span>
             </span>
           </div>

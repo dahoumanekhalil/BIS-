@@ -42,6 +42,7 @@ export async function saveSmtpConfigAction(
   const { user } = await requirePermission("settings.manage");
 
   const raw = {
+    provider: String(formData.get("provider") ?? "smtp"),
     host: String(formData.get("host") ?? "").trim(),
     port: Number(formData.get("port") ?? 587),
     encryption: String(formData.get("encryption") ?? "starttls"),
@@ -49,6 +50,8 @@ export async function saveSmtpConfigAction(
     username: String(formData.get("username") ?? ""),
     password: String(formData.get("password") ?? ""),
     clearPassword: formData.get("clearPassword") === "on",
+    resendApiKey: String(formData.get("resendApiKey") ?? ""),
+    clearResendApiKey: formData.get("clearResendApiKey") === "on",
     fromEmail: String(formData.get("fromEmail") ?? "").trim(),
     fromName: String(formData.get("fromName") ?? "").trim(),
     replyTo: String(formData.get("replyTo") ?? ""),
@@ -73,6 +76,17 @@ export async function saveSmtpConfigAction(
     };
   }
 
+  // Provider-specific presence check that Zod cannot enforce alone (the
+  // SMTP host field is optional at the schema layer so a Resend-only setup
+  // can save without a host).
+  if (parsed.data.provider === "smtp" && !parsed.data.host) {
+    return {
+      status: "error",
+      message: "Host SMTP requis.",
+      fieldErrors: { host: "Host requis" }
+    };
+  }
+
   try {
     await saveSmtpConfig(parsed.data);
   } catch (err) {
@@ -85,11 +99,16 @@ export async function saveSmtpConfigAction(
     };
   }
 
-  // Audit — never log the password or the ciphertext. `passwordChanged`
-  // captures the intent (rotation / clear / no-change) instead.
+  // Audit — never log the password / API key / ciphertext. The `*Changed`
+  // fields capture intent (rotation / clear / no-change) instead.
   const passwordChanged = parsed.data.clearPassword
     ? "cleared"
     : parsed.data.password
+      ? "rotated"
+      : "unchanged";
+  const resendApiKeyChanged = parsed.data.clearResendApiKey
+    ? "cleared"
+    : parsed.data.resendApiKey
       ? "rotated"
       : "unchanged";
   await audit({
@@ -98,12 +117,14 @@ export async function saveSmtpConfigAction(
     entity: "SiteContent",
     entityId: "email.smtp",
     meta: {
+      provider: parsed.data.provider,
       host: parsed.data.host,
       port: parsed.data.port,
       encryption: parsed.data.encryption,
       authEnabled: parsed.data.authEnabled,
       hasUsername: Boolean(parsed.data.username),
       passwordChanged,
+      resendApiKeyChanged,
       fromEmail: parsed.data.fromEmail,
       fromName: parsed.data.fromName,
       hasReplyTo: Boolean(parsed.data.replyTo),
@@ -140,12 +161,19 @@ export async function testSmtpConnectionAction(): Promise<TestConnectionState> {
       : "settings.email.test-connection.failed",
     entity: "SiteContent",
     entityId: "email.smtp",
-    meta: {
-      host: cfg.host,
-      port: cfg.port,
-      encryption: cfg.encryption,
-      ...(result.ok ? {} : { category: result.category })
-    }
+    meta:
+      cfg.provider === "resend"
+        ? {
+            provider: "resend",
+            ...(result.ok ? {} : { category: result.category })
+          }
+        : {
+            provider: "smtp",
+            host: cfg.host,
+            port: cfg.port,
+            encryption: cfg.encryption,
+            ...(result.ok ? {} : { category: result.category })
+          }
   });
   if (result.ok) {
     return {

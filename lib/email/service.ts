@@ -68,7 +68,12 @@ export async function sendOutboxRow(row: EmailMessage): Promise<Outcome> {
     toName: row.toName,
     subject: row.subject,
     text: row.body,
-    html: row.html
+    html: row.html,
+    // Forward the queue's stable idempotency key to the provider layer.
+    // Resend uses it as its own request idempotency key so a retried
+    // outbox claim of the same row cannot double-deliver. SMTP has no
+    // equivalent and simply ignores the field.
+    idempotencyKey: row.idempotencyKey ?? null
   });
 
   if (result.ok) {
@@ -100,7 +105,7 @@ async function markSentLive(
       attemptCount: row.attemptCount + 1,
       nextAttemptAt: null,
       lastError: null,
-      provider: "smtp",
+      provider: cfg.provider,
       providerMsgId,
       errorMessage: null
     }
@@ -110,14 +115,23 @@ async function markSentLive(
     action: "email.sent",
     entity: "EmailMessage",
     entityId: row.id,
-    meta: {
-      templateKey: row.templateKey,
-      to: row.toEmail,
-      host: cfg.host,
-      port: cfg.port,
-      encryption: cfg.encryption,
-      providerMsgId
-    }
+    meta:
+      cfg.provider === "resend"
+        ? {
+            templateKey: row.templateKey,
+            to: row.toEmail,
+            provider: "resend",
+            providerMsgId
+          }
+        : {
+            templateKey: row.templateKey,
+            to: row.toEmail,
+            provider: "smtp",
+            host: cfg.host,
+            port: cfg.port,
+            encryption: cfg.encryption,
+            providerMsgId
+          }
   });
 }
 

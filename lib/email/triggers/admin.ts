@@ -106,7 +106,10 @@ export async function sendAdminTestEmail(
       action: "email.test.log-only",
       entity: "EmailMessage",
       entityId: record.id,
-      meta: { to: input.recipient, host: cfg.host }
+      meta:
+        cfg.provider === "resend"
+          ? { to: input.recipient, provider: "resend" }
+          : { to: input.recipient, provider: "smtp", host: cfg.host }
     });
     recordEmailAttempt(bucket);
     return { ok: false, reason: "log-only", emailId: record.id };
@@ -129,7 +132,8 @@ export async function sendAdminTestEmail(
     to: input.recipient,
     subject: rendered.subject,
     text: rendered.text,
-    html: rendered.html
+    html: rendered.html,
+    idempotencyKey: outboxId
   });
 
   recordEmailAttempt(bucket);
@@ -140,7 +144,7 @@ export async function sendAdminTestEmail(
       data: {
         status: EmailStatus.SENT,
         sentAt: new Date(),
-        provider: "smtp",
+        provider: cfg.provider,
         providerMsgId: result.providerMsgId,
         attemptCount: 1
       }
@@ -150,12 +154,20 @@ export async function sendAdminTestEmail(
       action: "email.test.sent",
       entity: "EmailMessage",
       entityId: record.id,
-      meta: {
-        to: input.recipient,
-        host: cfg.host,
-        port: cfg.port,
-        providerMsgId: result.providerMsgId
-      }
+      meta:
+        cfg.provider === "resend"
+          ? {
+              to: input.recipient,
+              provider: "resend",
+              providerMsgId: result.providerMsgId
+            }
+          : {
+              to: input.recipient,
+              provider: "smtp",
+              host: cfg.host,
+              port: cfg.port,
+              providerMsgId: result.providerMsgId
+            }
     });
     return { ok: true, providerMsgId: result.providerMsgId, emailId: record.id };
   }
@@ -174,12 +186,20 @@ export async function sendAdminTestEmail(
     action: "email.test.failed",
     entity: "EmailMessage",
     entityId: record.id,
-    meta: {
-      to: input.recipient,
-      host: cfg.host,
-      port: cfg.port,
-      category: result.category
-    }
+    meta:
+      cfg.provider === "resend"
+        ? {
+            to: input.recipient,
+            provider: "resend",
+            category: result.category
+          }
+        : {
+            to: input.recipient,
+            provider: "smtp",
+            host: cfg.host,
+            port: cfg.port,
+            category: result.category
+          }
   });
   return {
     ok: false,

@@ -15,6 +15,143 @@ import type { SmtpConfigView } from "@/lib/email/config";
 
 type Msg = { tone: "success" | "error"; text: string } | null;
 
+// ─── Provider presets ────────────────────────────────────────────────────
+//
+// Client-side convenience only — the backend still validates every field
+// authoritatively via smtpFormSchema, so bad preset data cannot bypass
+// validation. Presets only fill the transport fields (host / port /
+// encryption / auth / provider); user-specific fields (username, from
+// address, contact recipient) stay whatever the operator typed.
+type PresetKey =
+  | "custom"
+  | "gmail"
+  | "resend-api"
+  | "resend-smtp"
+  | "microsoft365"
+  | "sendgrid"
+  | "mailgun"
+  | "brevo"
+  | "ses"
+  | "hostinger";
+
+type Preset = {
+  label: string;
+  provider: SmtpConfigView["provider"];
+  host: string;
+  port: number;
+  encryption: SmtpConfigView["encryption"];
+  authEnabled: boolean;
+  hint?: string;
+};
+
+const PRESETS: Record<PresetKey, Preset> = {
+  custom: {
+    label: "Personnalisé",
+    provider: "smtp",
+    host: "",
+    port: 587,
+    encryption: "starttls",
+    authEnabled: true
+  },
+  gmail: {
+    label: "Gmail",
+    provider: "smtp",
+    host: "smtp.gmail.com",
+    port: 587,
+    encryption: "starttls",
+    authEnabled: true,
+    hint: "Utilisez un mot de passe d'application Google (2FA requis)."
+  },
+  "resend-api": {
+    label: "Resend (HTTPS API — recommandé)",
+    provider: "resend",
+    host: "",
+    port: 587,
+    encryption: "starttls",
+    authEnabled: false,
+    hint: "Ajoutez la clé API dans la section Resend ci-dessous."
+  },
+  "resend-smtp": {
+    label: "Resend (SMTP)",
+    provider: "smtp",
+    host: "smtp.resend.com",
+    port: 465,
+    encryption: "ssl",
+    authEnabled: true,
+    hint: "Nom d'utilisateur : « resend » — mot de passe : votre clé API."
+  },
+  microsoft365: {
+    label: "Microsoft 365",
+    provider: "smtp",
+    host: "smtp.office365.com",
+    port: 587,
+    encryption: "starttls",
+    authEnabled: true
+  },
+  sendgrid: {
+    label: "SendGrid (SMTP)",
+    provider: "smtp",
+    host: "smtp.sendgrid.net",
+    port: 587,
+    encryption: "starttls",
+    authEnabled: true,
+    hint: "Nom d'utilisateur : « apikey » — mot de passe : votre clé API SendGrid."
+  },
+  mailgun: {
+    label: "Mailgun (SMTP)",
+    provider: "smtp",
+    host: "smtp.mailgun.org",
+    port: 587,
+    encryption: "starttls",
+    authEnabled: true
+  },
+  brevo: {
+    label: "Brevo / Sendinblue",
+    provider: "smtp",
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    encryption: "starttls",
+    authEnabled: true
+  },
+  ses: {
+    label: "Amazon SES (SMTP)",
+    provider: "smtp",
+    host: "email-smtp.eu-west-1.amazonaws.com",
+    port: 587,
+    encryption: "starttls",
+    authEnabled: true,
+    hint: "Adaptez la région dans le host (email-smtp.<region>.amazonaws.com)."
+  },
+  hostinger: {
+    label: "Hostinger",
+    provider: "smtp",
+    host: "smtp.hostinger.com",
+    port: 465,
+    encryption: "ssl",
+    authEnabled: true
+  }
+};
+
+// Best-effort guess so the dropdown reflects the currently-saved config on
+// first render. Falls back to "custom" when no preset matches.
+function detectInitialPreset(v: SmtpConfigView): PresetKey {
+  if (v.provider === "resend") return "resend-api";
+  const host = v.host.toLowerCase();
+  for (const [key, p] of Object.entries(PRESETS) as [PresetKey, Preset][]) {
+    if (
+      key !== "custom" &&
+      p.provider === "smtp" &&
+      p.host &&
+      host === p.host.toLowerCase() &&
+      p.port === v.port &&
+      p.encryption === v.encryption
+    ) {
+      return key;
+    }
+  }
+  return "custom";
+}
+
 // SMTP settings form. Client-side ONLY collects & submits input; the browser
 // never receives the plaintext password (SmtpConfigView shape omits it and
 // only exposes `passwordSet` + `passwordFingerprint`).
@@ -31,6 +168,46 @@ export function SmtpForm({ initial }: { initial: SmtpConfigView }) {
   );
   const [authEnabled, setAuthEnabled] = useState(initial.authEnabled);
   const [mode, setMode] = useState<SmtpConfigView["mode"]>(initial.mode);
+  const [provider, setProvider] = useState<SmtpConfigView["provider"]>(
+    initial.provider
+  );
+  const [clearResendApiKey, setClearResendApiKey] = useState(false);
+  const [host, setHost] = useState(initial.host);
+  const [port, setPort] = useState<number>(initial.port);
+  const [preset, setPreset] = useState<PresetKey>(detectInitialPreset(initial));
+
+  // Apply a preset — driven purely from the client, purely a UX shortcut.
+  // The server re-validates every field via smtpFormSchema regardless of
+  // which preset was picked, so a tampered preset value cannot bypass
+  // backend rules.
+  function applyPreset(next: PresetKey) {
+    setPreset(next);
+    if (next === "custom") return;
+    const p = PRESETS[next];
+    setProvider(p.provider);
+    setHost(p.host);
+    setPort(p.port);
+    setEncryption(p.encryption);
+    setAuthEnabled(p.authEnabled);
+  }
+
+  // If the operator manually edits host/port/encryption/auth/provider after
+  // choosing a preset, quietly drop back to "custom" so the dropdown doesn't
+  // misrepresent the current state.
+  function bumpToCustomIfDivergent(next: Partial<Preset>) {
+    if (preset === "custom") return;
+    const current = PRESETS[preset];
+    const merged = { ...current, ...next };
+    if (
+      merged.host !== current.host ||
+      merged.port !== current.port ||
+      merged.encryption !== current.encryption ||
+      merged.authEnabled !== current.authEnabled ||
+      merged.provider !== current.provider
+    ) {
+      setPreset("custom");
+    }
+  }
 
   return (
     <div className="grid gap-6">
@@ -48,26 +225,143 @@ export function SmtpForm({ initial }: { initial: SmtpConfigView }) {
         className="space-y-6"
       >
         <fieldset className="grid gap-4 rounded-[16px] border border-line bg-white p-6">
+          <Legend title="Fournisseur email" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-[12px] font-semibold text-ink/70">
+              Préréglage
+              <select
+                value={preset}
+                onChange={(e) => applyPreset(e.currentTarget.value as PresetKey)}
+                className="mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink"
+              >
+                {(Object.entries(PRESETS) as [PresetKey, Preset][]).map(
+                  ([key, p]) => (
+                    <option key={key} value={key}>
+                      {p.label}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
+            <label className="text-[12px] font-semibold text-ink/70">
+              Transport
+              <select
+                name="provider"
+                value={provider}
+                onChange={(e) => {
+                  const v = e.currentTarget.value as SmtpConfigView["provider"];
+                  setProvider(v);
+                  bumpToCustomIfDivergent({ provider: v });
+                }}
+                className="mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink"
+              >
+                <option value="smtp">SMTP (nodemailer)</option>
+                <option value="resend">Resend (HTTPS API)</option>
+              </select>
+            </label>
+          </div>
+          {PRESETS[preset].hint && (
+            <p className="text-[11.5px] text-ink/70">
+              <span className="font-semibold text-cobalt">Astuce : </span>
+              {PRESETS[preset].hint}
+            </p>
+          )}
+          <p className="text-[11.5px] text-ink/55">
+            Le préréglage remplit uniquement l'hôte / port / chiffrement /
+            authentification. Les identifiants et l'adresse d'expéditeur
+            restent à saisir manuellement.
+          </p>
+        </fieldset>
+
+        {provider === "resend" && (
+          <fieldset className="grid gap-4 rounded-[16px] border border-line bg-white p-6">
+            <Legend title="Resend" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Field
+                  label={
+                    initial.resendApiKeySet
+                      ? "Clé API (laisser vide pour conserver)"
+                      : "Clé API"
+                  }
+                  name="resendApiKey"
+                  type="password"
+                  autoComplete="new-password"
+                  defaultValue=""
+                />
+                {initial.resendApiKeySet && (
+                  <p className="mt-2 text-[11.5px] text-ink/55">
+                    Clé API configurée ({initial.resendApiKeyFingerprint}).
+                    Cochez « effacer » pour la supprimer.
+                  </p>
+                )}
+                <label className="mt-2 flex items-center gap-2 text-[11.5px] text-ink/70">
+                  <input
+                    type="checkbox"
+                    name="clearResendApiKey"
+                    checked={clearResendApiKey}
+                    onChange={(e) => setClearResendApiKey(e.currentTarget.checked)}
+                  />
+                  Effacer la clé API stockée
+                </label>
+              </div>
+              <p className="text-[11.5px] text-ink/55 sm:pt-6">
+                La clé API est chiffrée au repos (AES-256-GCM). Elle n'est
+                jamais renvoyée au navigateur après enregistrement. Utilisez
+                de préférence une clé « sending-only » restreinte à votre
+                domaine vérifié.
+              </p>
+            </div>
+          </fieldset>
+        )}
+
+        <fieldset
+          className="grid gap-4 rounded-[16px] border border-line bg-white p-6"
+          disabled={provider === "resend"}
+        >
           <Legend title="Serveur SMTP" />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Host" name="host" defaultValue={initial.host} required />
-            <Field
-              label="Port"
-              name="port"
-              type="number"
-              min={1}
-              max={65535}
-              defaultValue={String(initial.port)}
-              required
-            />
+            <label className="text-[12px] font-semibold text-ink/70">
+              Host
+              <input
+                name="host"
+                value={host}
+                required={provider === "smtp"}
+                onChange={(e) => {
+                  const v = e.currentTarget.value;
+                  setHost(v);
+                  bumpToCustomIfDivergent({ host: v });
+                }}
+                className="mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink"
+              />
+            </label>
+            <label className="text-[12px] font-semibold text-ink/70">
+              Port
+              <input
+                name="port"
+                type="number"
+                min={1}
+                max={65535}
+                value={port}
+                required={provider === "smtp"}
+                onChange={(e) => {
+                  const n = Number(e.currentTarget.value);
+                  setPort(Number.isFinite(n) ? n : 0);
+                  if (Number.isFinite(n)) bumpToCustomIfDivergent({ port: n });
+                }}
+                className="mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink"
+              />
+            </label>
             <label className="text-[12px] font-semibold text-ink/70">
               Chiffrement
               <select
                 name="encryption"
                 value={encryption}
-                onChange={(e) =>
-                  setEncryption(e.currentTarget.value as SmtpConfigView["encryption"])
-                }
+                onChange={(e) => {
+                  const v = e.currentTarget.value as SmtpConfigView["encryption"];
+                  setEncryption(v);
+                  bumpToCustomIfDivergent({ encryption: v });
+                }}
                 className="mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink"
               >
                 <option value="none">Aucun</option>
@@ -80,7 +374,11 @@ export function SmtpForm({ initial }: { initial: SmtpConfigView }) {
                 type="checkbox"
                 name="authEnabled"
                 checked={authEnabled}
-                onChange={(e) => setAuthEnabled(e.currentTarget.checked)}
+                onChange={(e) => {
+                  const v = e.currentTarget.checked;
+                  setAuthEnabled(v);
+                  bumpToCustomIfDivergent({ authEnabled: v });
+                }}
               />
               Authentification activée
             </label>
@@ -89,7 +387,7 @@ export function SmtpForm({ initial }: { initial: SmtpConfigView }) {
 
         <fieldset
           className="grid gap-4 rounded-[16px] border border-line bg-white p-6"
-          disabled={!authEnabled}
+          disabled={provider === "resend" || !authEnabled}
         >
           <Legend title="Identifiants" />
           <div className="grid gap-4 sm:grid-cols-2">
