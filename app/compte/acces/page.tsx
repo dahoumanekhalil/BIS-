@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AccessPointType, AdmissionMode } from "@prisma/client";
 import { requireAccount } from "@/lib/account/auth";
 import {
   accessStateFor,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/account/participant";
 import { CompteCard } from "@/components/compte/card";
 import { StatusPill } from "@/components/compte/status-pill";
+import { RoomRegistrationControls } from "@/components/compte/room-registration-controls";
 import {
   CHECKIN_RESULT_LABEL,
   CHECKIN_RESULT_TONE,
@@ -32,7 +34,8 @@ const ACCESS_STATE_TONE: Record<AccessState, StatusTone> = {
 
 export default async function CompteAccesPage() {
   const account = await requireAccount();
-  const { participant, accessPoints } = await getCompteContext(account);
+  const { participant, accessPoints, roomRegistrations } =
+    await getCompteContext(account);
 
   if (!participant) {
     return (
@@ -54,6 +57,21 @@ export default async function CompteAccesPage() {
 
   const permissions = participant.accessPermissions;
 
+  // Split access points: MAIN_ENTRANCE remains admin-granted (tri-state
+  // matrix); ROOM points get the Sub-Phase D self-service registration
+  // controls. Sorting is preserved from listAccessPoints.
+  const mainEntrances = accessPoints.filter(
+    (ap) => ap.type === AccessPointType.MAIN_ENTRANCE
+  );
+  const rooms = accessPoints.filter((ap) => ap.type === AccessPointType.ROOM);
+
+  // Index the participant's existing registrations by AccessPoint for
+  // O(1) lookup as we render each room control. Deliberately keyed on
+  // the *server-owned* accessPointId — no client-supplied lookup.
+  const registrationByAp = new Map(
+    roomRegistrations.map((r) => [r.accessPointId, r])
+  );
+
   // Ownership: participant.id was resolved server-side from the account
   // session (see lib/account/participant.ts). The history query is scoped
   // strictly to this participant — no URL/form input is ever considered.
@@ -63,37 +81,87 @@ export default async function CompteAccesPage() {
     <div className="grid gap-6">
       <CompteCard eyebrow="Vue d'ensemble" title="Mon accès BIS 2026">
         <p className="mb-6 text-[13px] leading-relaxed text-ink/65">
-          Chaque salle du sommet dispose d&apos;un contrôle d&apos;accès
-          indépendant. L&apos;entrée principale suit les règles de votre
-          inscription ; les salles sont attribuées individuellement par
-          l&apos;organisation.
+          L&apos;entrée principale suit les règles de votre inscription
+          BIS 2026. Chaque salle du sommet dispose d&apos;un contrôle
+          d&apos;accès indépendant : certaines salles sont en accès
+          libre, d&apos;autres nécessitent une réservation payante.
         </p>
-        <ul className="divide-y divide-line/70 rounded-lg border border-line/70 bg-frost/40">
-          {accessPoints.map((ap) => {
-            const state = accessStateFor(permissions, ap.id);
-            return (
-              <li
-                key={ap.slug}
-                className="flex items-center justify-between gap-4 px-4 py-4"
-              >
-                <div>
-                  <p className="text-[14px] font-semibold text-ink">
-                    {ap.name}
-                  </p>
-                  <p className="mt-0.5 text-[11px] uppercase tracking-[0.16em] text-ink/45">
-                    {ap.type === "MAIN_ENTRANCE"
-                      ? "Entrée du sommet"
-                      : "Salle"}
-                  </p>
-                </div>
-                <StatusPill
-                  tone={ACCESS_STATE_TONE[state]}
-                  label={ACCESS_STATE_LABEL[state]}
-                />
-              </li>
-            );
-          })}
-        </ul>
+
+        {/* Main entrance(s) — read-only tri-state pill (unchanged) */}
+        {mainEntrances.length > 0 && (
+          <>
+            <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.18em] text-ink/50">
+              Entrée principale
+            </p>
+            <ul className="divide-y divide-line/70 rounded-lg border border-line/70 bg-frost/40">
+              {mainEntrances.map((ap) => {
+                const state = accessStateFor(permissions, ap.id);
+                return (
+                  <li
+                    key={ap.slug}
+                    className="flex items-center justify-between gap-4 px-4 py-4"
+                  >
+                    <div>
+                      <p className="text-[14px] font-semibold text-ink">
+                        {ap.name}
+                      </p>
+                      <p className="mt-0.5 text-[11px] uppercase tracking-[0.16em] text-ink/45">
+                        Entrée du sommet
+                      </p>
+                    </div>
+                    <StatusPill
+                      tone={ACCESS_STATE_TONE[state]}
+                      label={ACCESS_STATE_LABEL[state]}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+
+        {/* Rooms — self-service registration controls (Sub-Phase D) */}
+        {rooms.length > 0 && (
+          <>
+            <p className="mb-2 mt-6 text-[10.5px] font-bold uppercase tracking-[0.18em] text-ink/50">
+              Salles du sommet
+            </p>
+            <div className="grid gap-3">
+              {rooms.map((ap) => {
+                const registration = registrationByAp.get(ap.id) ?? null;
+                // Rooms without a configured admission mode are hidden
+                // from the attendee UI — the domain would refuse
+                // registration on them anyway, so there is nothing
+                // actionable to render.
+                if (
+                  ap.admissionMode !== AdmissionMode.FREE &&
+                  ap.admissionMode !== AdmissionMode.PAID
+                ) {
+                  return null;
+                }
+                return (
+                  <RoomRegistrationControls
+                    key={ap.slug}
+                    accessPointId={ap.id}
+                    accessPointName={ap.name}
+                    admissionMode={ap.admissionMode}
+                    currentPriceMinor={ap.priceMinor}
+                    currentCurrency={ap.currency}
+                    registration={
+                      registration
+                        ? {
+                            status: registration.status,
+                            priceMinorSnapshot: registration.priceMinorSnapshot,
+                            currencySnapshot: registration.currencySnapshot
+                          }
+                        : null
+                    }
+                  />
+                );
+              })}
+            </div>
+          </>
+        )}
       </CompteCard>
 
       <CompteCard

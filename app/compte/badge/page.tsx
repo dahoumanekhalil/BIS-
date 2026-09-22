@@ -3,6 +3,7 @@ import { requireAccount } from "@/lib/account/auth";
 import { getCompteContext } from "@/lib/account/participant";
 import { CompteCard } from "@/components/compte/card";
 import { BadgeQrClient } from "@/components/compte/badge-qr-client";
+import { ensureCheckinCode } from "@/lib/badge/checkin-code";
 import { PaymentStatus, RegistrationStatus } from "@prisma/client";
 
 export const metadata = { title: "Mon badge" };
@@ -72,6 +73,18 @@ export default async function CompteBadgePage() {
     );
   }
 
+  // Phase 19 — ensure the participant has a secure human-readable
+  // check-in code assigned. `ensureCheckinCode` is idempotent + atomic:
+  //   • returns the existing code if already assigned,
+  //   • otherwise generates a fresh cryptographically random one and
+  //     stores it via an updateMany atomic-claim (Phase 10 B3 pattern)
+  //     so two concurrent /compte/badge loads cannot overwrite each
+  //     other's code.
+  // The code lives on the participant row (public-safe surface) and
+  // is displayed on the badge front. NEVER logged, never in URLs,
+  // never in AuditLog metadata.
+  const checkinCode = await ensureCheckinCode(participant.id);
+
   return (
     <BadgeQrClient
       identity={{
@@ -80,7 +93,14 @@ export default async function CompteBadgePage() {
         participationChoice: participant.participationChoice,
         organization: participant.organization,
         jobTitle: participant.jobTitle,
-        badgeStatus: badge?.status ?? null
+        badgeStatus: badge?.status ?? null,
+        // Phase 18 — role variant is derived from tier + participation
+        // by lib/badge/role.ts:resolveBadgeRole. Adding `tier` here
+        // is a whitelist-safe pass-through; the value comes from
+        // getParticipantForAccount's already-authorised select.
+        tier: participant.tier ?? null,
+        // Phase 19 — the code just assigned / re-fetched above.
+        checkinCode
       }}
       hasActiveCredential={badge !== null}
     />

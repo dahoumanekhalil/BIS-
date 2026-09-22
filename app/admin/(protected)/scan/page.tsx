@@ -67,6 +67,14 @@ export default async function ScanHubPage() {
             >
               Historique des scans →
             </Link>
+            {can(user.role, "analytics.view") && (
+              <Link
+                href="/admin/scan/analytics"
+                className="inline-flex items-center gap-2 rounded-btn border border-line bg-white px-4 py-2 text-[12px] font-bold text-ink transition-colors hover:border-cobalt hover:text-cobalt"
+              >
+                Analytics check-in →
+              </Link>
+            )}
             {can(user.role, "access.view") && (
               <Link
                 href="/admin/access-points"

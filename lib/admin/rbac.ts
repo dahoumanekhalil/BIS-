@@ -45,6 +45,16 @@ export const PERMISSIONS = [
   "audit.view",
   "settings.manage",
 
+  // ─── Email infrastructure (Email Infrastructure Phase) ────────────
+  // settings.email.test — permission to invoke "Test SMTP connection"
+  //   and "Send test email" on the /admin/settings/email page. Distinct
+  //   from settings.manage so an oncall operator can be granted the
+  //   ability to run diagnostics WITHOUT the ability to rotate the SMTP
+  //   password. Baseline: inherited via ALL by SUPER_ADMIN and ADMIN
+  //   (they can already save the config, so they can already test it);
+  //   other roles must be granted via RolePermissionOverride.
+  "settings.email.test",
+
   // ─── Badge / access-control (Phase 3) ────────────────────────────────
   // badge.manage             — issue / revoke / rotate a participant's BadgeCredential.
   // access.view              — read a participant's per-room access matrix.
@@ -70,7 +80,29 @@ export const PERMISSIONS = [
   "access.view",
   "access.manage",
   "access.validate.main",
-  "access.validate.room"
+  "access.validate.room",
+
+  // ─── Room-registration payment boundary (Sub-Phase D) ────────────────
+  // payment.confirm.room  — trusted admin confirmation of a PENDING_PAYMENT
+  //                         room registration → PAID. Held by SUPER_ADMIN,
+  //                         ADMIN, and FINANCE. Distinct from the historic
+  //                         `revenue.reconcile` permission because room
+  //                         registration payments are a separate domain
+  //                         from event-level registration revenue.
+  // payment.refund.room   — trusted admin refund of a PAID room
+  //                         registration → REFUNDED. Same holders as
+  //                         confirm; a refund is a compensating financial
+  //                         action and belongs in the same authorisation
+  //                         circle.
+  //
+  // These permissions gate the admin server actions in
+  // `app/admin/(protected)/registrants/[id]/room-payment-actions.ts`.
+  // Cancellation (PENDING_PAYMENT / FREE_CONFIRMED / PAID → CANCELLED) is
+  // NOT protected by a new permission — it re-uses `access.manage`, which
+  // is the existing permission that already governs a registrant's per-
+  // room access entitlement.
+  "payment.confirm.room",
+  "payment.refund.room"
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -90,7 +122,15 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
       p !== "roles.manage" &&
       p !== "users.manage" &&
       p !== "revenue.view" &&
-      p !== "revenue.reconcile"
+      p !== "revenue.reconcile" &&
+      // Sub-Phase D — room payment confirmation/refund is a
+      // financial action. ADMIN does not hold `revenue.reconcile`, so
+      // by the same principle it does not hold the room payment
+      // confirm/refund permissions. FINANCE + SUPER_ADMIN are the
+      // authorised roles; a RolePermissionOverride can grant ADMIN
+      // temporary access if operational needs require it.
+      p !== "payment.confirm.room" &&
+      p !== "payment.refund.room"
   ),
   // Sales: sees registrants, can edit + email + export, view-only elsewhere.
   SALES: [
@@ -155,7 +195,13 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "revenue.reconcile",
     "registrants.view",
     "analytics.view",
-    "audit.view"
+    "audit.view",
+    // Sub-Phase D — FINANCE is the primary holder of the room-payment
+    // confirm/refund boundary. SUPER_ADMIN inherits these via ALL.
+    // ADMIN is explicitly excluded above so a room payment confirm
+    // requires a distinct financial authorisation.
+    "payment.confirm.room",
+    "payment.refund.room"
   ],
   ANALYTICS: ["dashboard.view", "analytics.view", "registrants.view"],
   VIEWER: [

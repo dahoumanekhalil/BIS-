@@ -238,6 +238,7 @@ model Participant {
   // Badge / access — see the ACCESS & BADGES section below.
   credentials       BadgeCredential[]
   accessPermissions ParticipantAccess[]
+  roomRegistrations RoomRegistration[]
 
   // Ops fields (admin platform)
   tier          RegistrationTier?
@@ -247,6 +248,16 @@ model Participant {
   paymentRef    String?
   paidAt        DateTime?
   ticketCode    String?           @unique
+  // Phase 19 — secure human-readable text check-in code (fallback
+  // input when QR scanning is impractical). Format: XXXX-XXXX-XXXX
+  // (12 payload chars + 2 dashes, 14 chars total) from a 28-char
+  // unambiguous charset (no O/0/I/1/S/5/B/8). Cryptographically
+  // random. Server-normalized on validation. `ticketCode` remains
+  // the legacy admin-typed identifier for the /admin/check-in flow;
+  // this is a SEPARATE credential surface designed specifically for
+  // manual text input at the QR scanner. Nullable so existing rows
+  // can be backfilled by scripts/backfill-checkin-codes.mjs.
+  checkinCode   String?           @unique @db.VarChar(16)
   checkedInAt   DateTime?
   checkedInGate String?
 
@@ -369,17 +380,20 @@ model SiteContent {
 // Separate from AdminUser: no roles, no back-office access.
 
 model AccountUser {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  firstName    String
-  lastName     String
-  passwordHash String
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  firstName       String
+  lastName        String
+  passwordHash    String
+  lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  sessions     AccountSession[]
-  participants Participant[]
+  sessions           AccountSession[]
+  participants       Participant[]
+  verificationTokens EmailVerificationToken[]
+  passwordResets     PasswordResetToken[]
 }
 
 model AccountSession {
@@ -389,6 +403,43 @@ model AccountSession {
   tokenHash String      @unique
   createdAt DateTime    @default(now())
   expiresAt DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// SMTP-linked authentication artefacts. Both tables mirror the AccountSession
+// pattern: only sha256(tokenHash) is persisted so a database leak cannot be
+// replayed as a working token. `usedAt` enforces single-use consumption at
+// the application layer; expiry is compared against `expiresAt`.
+
+model EmailVerificationToken {
+  id           String      @id @default(cuid())
+  userId       String
+  user         AccountUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String      @unique
+  // Snapshot of the email at issue-time. If the account changes email later,
+  // the outstanding link no longer verifies the current email.
+  emailAtIssue String
+  createdAt    DateTime    @default(now())
+  expiresAt    DateTime
+  usedAt       DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id         String      @id @default(cuid())
+  userId     String
+  user       AccountUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String      @unique
+  createdAt  DateTime    @default(now())
+  expiresAt  DateTime
+  usedAt     DateTime?
+  // Best-effort audit metadata. Client IP is truncated at the caller
+  // (see lib/account/password-reset.ts) before it lands here.
+  requestIp  String?
 
   @@index([userId])
   @@index([expiresAt])
@@ -414,6 +465,96 @@ enum BadgeStatus {
   EXPIRED
 }
 
+// Phase 17 — admission mode for exhibition spaces (Space Management UX).
+// Metadata-only: this field records the admin's declared admission policy
+// for reporting and operator-facing display. It does NOT change the
+// existing Phase 11 room validator — the validator still requires
+// `PAID_ELIGIBLE AND ParticipantAccess.granted === true` regardless of
+// this label. If a space is FREE, admins are expected to grant blanket
+// `ParticipantAccess` rows to eligible participants; if PAID, the
+// existing payment/eligibility rules already gate entry. See the
+// Phase 17 record in the master doc.
+enum AdmissionMode {
+  FREE
+  PAID
+}
+
+// Distinguishes the origin of a ParticipantAccess row so the room
+// registration/payment layer can safely materialize its own entitlements
+// without stepping on legitimate admin overrides.
+//
+//   ADMIN         Row was created or last touched by a human admin via
+//                 grantRoomAccessAction / revokeRoomAccessAction. This is
+//                 the default for every pre-existing row (safe migration
+//                 default) and for every future manual admin grant.
+//                 syncRoomAccessEntitlement MUST NEVER mutate rows with
+//                 source=ADMIN. Admin intent takes precedence.
+//   REGISTRATION  Row is materialized by syncRoomAccessEntitlement from
+//                 a RoomRegistration whose status is FREE_CONFIRMED or
+//                 PAID. Only these rows may be updated/revoked by the
+//                 sync service when the underlying registration
+//                 transitions to REFUNDED / CANCELLED / PAYMENT_FAILED.
+//
+// The room QR validator does NOT read this field — it still authorizes
+// solely on `granted === true` (fast, deterministic). The source field
+// is a boundary between the entitlement sync layer and the admin
+// override layer.
+enum AccessGrantSource {
+  ADMIN
+  REGISTRATION
+}
+
+// Registration/entitlement lifecycle for a participant attending a
+// specific ROOM. Distinct from the physical CheckIn and from the
+// event-level `Participant.paymentStatus` (that latter one still
+// gates ROOM entry via the existing validator — this feature adds a
+// per-room entitlement on top of that global gate).
+//
+// Terminal-or-terminal-ish states (CANCELLED / REFUNDED /
+// PAYMENT_FAILED / EXPIRED) always imply "no room entitlement". The
+// active states are:
+//   PENDING_PAYMENT   PAID room, participant registered, awaiting a
+//                     trusted confirmation (admin-confirms in this
+//                     phase; future: verified provider webhook).
+//   FREE_CONFIRMED    FREE room, self-service registration succeeded.
+//   PAID              Payment confirmed by the trusted service.
+//
+// A registration returning to an active state after a terminal one is
+// allowed — a participant may retry after PAYMENT_FAILED / CANCELLED
+// / EXPIRED. The unique constraint on (participantId, accessPointId)
+// forbids two active rows for the same pair, so re-registration
+// re-uses the existing row.
+enum RoomRegistrationStatus {
+  PENDING_PAYMENT
+  FREE_CONFIRMED
+  PAID
+  PAYMENT_FAILED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+
+// Kinds of transitions/events on a RoomRegistration. Every meaningful
+// state change appends one of these — the row is an append-only audit
+// trail scoped to a single registration. The generic AuditLog
+// captures the same kinds of events at the application/RBAC level;
+// this model exists so payment reconciliation and future provider
+// integration have a domain-native, queryable trail.
+enum RoomPaymentEventKind {
+  INIT             // registration created
+  CONFIRM          // moved to FREE_CONFIRMED or PAID
+  FAIL             // moved to PAYMENT_FAILED
+  REFUND           // moved to REFUNDED
+  CANCEL           // moved to CANCELLED
+  ADMIN_OVERRIDE   // admin forced a state (e.g., manual grant/deny)
+}
+
+// AccessPoint is the operational identity of a physical space at the
+// event. Phase 17 extends the record with optional descriptive +
+// admission-policy fields and a Team membership relation, without
+// touching the fields that are load-bearing for the existing scanner /
+// validator / history pipelines (id / slug / name / type / active /
+// order — all unchanged).
 model AccessPoint {
   id        String          @id @default(cuid())
   slug      String          @unique
@@ -424,11 +565,72 @@ model AccessPoint {
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
-  permissions ParticipantAccess[]
-  checkIns    CheckIn[]
+  // ── Phase 17 additions (all nullable / defaulted, all additive) ──
+  // Free-form paragraph describing what the space is for. Rendered by
+  // /admin/spaces/[slug]; never surfaced to attendees today.
+  description String? @db.Text
+  // Admission policy label. Nullable (MAIN_ENTRANCE points typically
+  // leave it null). Not read by any Phase 10/11 validator directly —
+  // however this field is now functionally load-bearing for the
+  // per-room registration/payment layer:
+  //   • admissionMode = FREE  → self-service registration is allowed
+  //   • admissionMode = PAID  → registration creates a PENDING_PAYMENT
+  //                             and requires trusted confirmation before
+  //                             ParticipantAccess is materialized.
+  // MAIN_ENTRANCE points MUST leave this null (validated at the
+  // service layer). Existing ROOM rows are migrated to FREE.
+  admissionMode AdmissionMode?
+  // Integer minor units (DZD; no floating point). Required by the
+  // service layer when admissionMode = PAID; must be null when
+  // admissionMode = FREE. Enforced in application code (Prisma DSL
+  // cannot express conditional NOT NULL). Immutable per-registration:
+  // RoomRegistration.priceMinorSnapshot captures the value at
+  // registration time so admin price edits never rewrite historical
+  // amounts.
+  priceMinor Int?
+  // Currency ISO code. "DZD" only in this phase (single-currency
+  // convention matches existing Participant.paymentAmount DZD).
+  // Nullable when admissionMode != PAID.
+  currency String?
+  // Lightweight content payloads. Each is a `Json` array of small
+  // objects validated by Zod on write in the space actions module.
+  // Deliberately NOT modelled as relational tables — this is a
+  // configuration/CMS-lite surface, not a queryable domain model.
+  //   activities: [{ title: string, description?: string }]
+  //   topics:     [{ label: string }]
+  //   exhibitors: [{ name: string, website?: string, description?: string }]
+  activities Json?
+  topics     Json?
+  exhibitors Json?
+
+  permissions       ParticipantAccess[]
+  checkIns          CheckIn[]
+  teamMembers       AccessPointTeamMember[]
+  roomRegistrations RoomRegistration[]
 
   @@index([type])
   @@index([active])
+}
+
+// Phase 17 — dedicated Check-in team membership per space.
+// This is a METADATA association only. The existing Phase 3/10/11
+// scanner permission model is TYPE-LEVEL (`access.validate.main` +
+// `access.validate.room`), so being on team X does NOT automatically
+// authorise scanning X server-side today. Team membership is a
+// staffing/coordination tool. Making it a per-space authorisation
+// boundary is a documented deferral (see master doc §Phase 17).
+model AccessPointTeamMember {
+  accessPointId String
+  adminUserId   String
+  assignedAt    DateTime @default(now())
+  assignedById  String?
+
+  accessPoint AccessPoint @relation(fields: [accessPointId], references: [id], onDelete: Cascade)
+  adminUser   AdminUser   @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@id([accessPointId, adminUserId])
+  @@index([adminUserId])
+  @@index([accessPointId])
 }
 
 // A BadgeCredential is a QR credential issued to a Participant. The raw
@@ -469,15 +671,24 @@ model BadgeCredential {
 // Per-participant, per-access-point permission. Existence with granted=true
 // means the participant is authorized for that AccessPoint. Absence means
 // NOT AUTHORIZED — the default. Business rule: room access is never
-// auto-granted; an authorized admin must grant it explicitly.
+// auto-granted; an authorized admin must grant it explicitly OR the
+// room-registration sync layer must materialize an entitlement from a
+// confirmed RoomRegistration.
+//
+// The `source` field marks who owns this row's lifecycle:
+//   ADMIN         Manual admin grant/revoke. Default. Includes every
+//                 pre-existing row after migration.
+//   REGISTRATION  Materialized by syncRoomAccessEntitlement.
+// The sync service NEVER touches ADMIN rows — admin intent wins.
 model ParticipantAccess {
   participantId String
   accessPointId String
-  granted       Boolean   @default(true)
+  granted       Boolean            @default(true)
   grantedById   String?
-  grantedAt     DateTime  @default(now())
+  grantedAt     DateTime           @default(now())
   revokedAt     DateTime?
   revokedById   String?
+  source        AccessGrantSource  @default(ADMIN)
 
   participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   accessPoint AccessPoint @relation(fields: [accessPointId], references: [id], onDelete: Cascade)
@@ -485,6 +696,7 @@ model ParticipantAccess {
   @@id([participantId, accessPointId])
   @@index([accessPointId])
   @@index([granted])
+  @@index([source])
 }
 
 // --------------------------- ADMIN / OPERATIONS ---------------------------
@@ -518,10 +730,12 @@ model AdminUser {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  sessions  AdminSession[]
-  auditLogs AuditLog[]
-  checkIns  CheckIn[]
-  speaker   Speaker?
+  sessions          AdminSession[]
+  auditLogs         AuditLog[]
+  checkIns          CheckIn[]
+  speaker           Speaker?
+  teamMemberships   AccessPointTeamMember[]
+  roomPaymentEvents RoomPaymentEvent[]
 
   @@index([role])
   @@index([status])
@@ -627,9 +841,28 @@ model EmailMessage {
   createdAt     DateTime    @default(now())
   sentAt        DateTime?
 
+  // ─── Delivery orchestration (Email Infrastructure Phase) ─────────────
+  // idempotencyKey — deterministic key for callers to prevent duplicates
+  //   (e.g. `verify:<userId>:<tokenHash>`). Nullable so admin composer
+  //   emails keep their existing behaviour.
+  // attemptCount / maxAttempts / nextAttemptAt — worker backoff state.
+  // lastError — cleaner than errorMessage for the retry loop; sticky.
+  // locale — reserved for future i18n; defaults to "fr".
+  // provider / providerMsgId — audit trail for the transport (e.g. SMTP
+  //   Message-ID returned by nodemailer).
+  idempotencyKey String?   @unique
+  attemptCount   Int       @default(0)
+  maxAttempts    Int       @default(5)
+  nextAttemptAt  DateTime?
+  lastError      String?
+  locale         String    @default("fr")
+  provider       String?
+  providerMsgId  String?
+
   @@index([participantId])
   @@index([createdAt])
   @@index([status])
+  @@index([status, nextAttemptAt])
 }
 
 model RolePermissionOverride {
@@ -642,4 +875,106 @@ model RolePermissionOverride {
 
   @@unique([role, permission])
   @@index([role])
+}
+
+// --------------------------- ROOM REGISTRATION / ENTITLEMENT ---------------------------
+//
+// Per-room entitlement layer that sits between AccessPoint (physical
+// space) and ParticipantAccess (fast scanner-facing authorization).
+//
+//   AccessPoint (admissionMode FREE|PAID, priceMinor, currency)
+//         │
+//         ▼
+//   RoomRegistration (participant × room; status lifecycle; frozen price)
+//         │
+//         ▼   via syncRoomAccessEntitlement (canonical service, transactional, idempotent)
+//         │
+//   ParticipantAccess (source=REGISTRATION when materialized from here;
+//                       ADMIN rows remain untouched by the sync service)
+//         │
+//         ▼
+//   Room QR / text validator (unchanged — reads granted boolean only)
+//         │
+//         ▼
+//   CheckIn (physical entry — semantics unchanged)
+//
+// Two invariants enforced at the DB level:
+//   1) `@@unique([participantId, accessPointId])` on RoomRegistration —
+//      a participant cannot hold two live registrations for the same
+//      room. Re-registering after a terminal status re-uses the row.
+//   2) A partial unique index on
+//      `("registrationId", "providerRef") WHERE "providerRef" IS NOT NULL`
+//      on RoomPaymentEvent — installed via
+//      scripts/apply-room-payment-idempotency.ts (mirrors the existing
+//      BadgeCredential partial-unique pattern). Prevents duplicate
+//      processing of the same trusted provider callback while still
+//      allowing multiple admin-side events (which have providerRef NULL).
+model RoomRegistration {
+  id            String                 @id @default(cuid())
+  participantId String
+  accessPointId String
+  status        RoomRegistrationStatus
+
+  // Frozen at registration time; NEVER recomputed from the current
+  // AccessPoint.priceMinor. NULL when the room was FREE at the
+  // moment of registration. Currency likewise frozen.
+  priceMinorSnapshot Int?
+  currencySnapshot   String?
+
+  // Trusted-provider transaction reference. NULL for admin-confirmed
+  // payments. Populated by a future provider-webhook flow.
+  paymentRef String?
+
+  // Lifecycle timestamps. Only the ones relevant to the current
+  // status are populated; the rest remain null.
+  registeredAt DateTime  @default(now())
+  paidAt       DateTime?
+  cancelledAt  DateTime?
+  refundedAt   DateTime?
+  failedAt     DateTime?
+  // Optional soft deadline for completing a PENDING_PAYMENT
+  // registration. If exceeded, the sync service may transition the
+  // row to EXPIRED. Nullable — no expiry enforced by default.
+  expiresAt DateTime?
+  updatedAt DateTime @updatedAt
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  accessPoint AccessPoint @relation(fields: [accessPointId], references: [id], onDelete: Cascade)
+  events      RoomPaymentEvent[]
+
+  @@unique([participantId, accessPointId])
+  @@index([accessPointId, status])
+  @@index([participantId])
+  @@index([status])
+  @@index([paymentRef])
+}
+
+// Append-only audit trail for RoomRegistration state transitions.
+// Every meaningful state change writes exactly one row. Idempotency
+// against duplicate provider callbacks is enforced by the partial
+// unique index on ("registrationId", "providerRef") described above.
+model RoomPaymentEvent {
+  id             String               @id @default(cuid())
+  registrationId String
+  kind           RoomPaymentEventKind
+  // Admin who took the action for admin-confirmed events; null for
+  // system-driven transitions (INIT on registration, EXPIRED on
+  // deadline pass, future webhook confirmations).
+  actorAdminId String?
+  // Trusted-provider correlation id. Null for admin-confirmed events.
+  // Used together with registrationId to enforce webhook idempotency
+  // via the partial unique index.
+  providerRef String?
+  // Structured payload; e.g. { before: status, after: status,
+  // reason, priceMinorSnapshot }. Must never contain secrets, raw
+  // tokens, or PII beyond what already lives on the referenced rows.
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  registration RoomRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  actorAdmin   AdminUser?       @relation(fields: [actorAdminId], references: [id], onDelete: SetNull)
+
+  @@index([registrationId, createdAt])
+  @@index([actorAdminId])
+  @@index([kind])
 }

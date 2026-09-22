@@ -242,13 +242,18 @@ function renderTicketBlock(t: NonNullable<EmailContent["ticketBlock"]>): string 
 function renderCta(cta: EmailCta): string {
   const url = safeUrl(cta.url);
   if (!url) return "";
+  // Defense in depth: safeUrl only vets the scheme. If a template author
+  // ever binds a variable-resolved value to `cta.url` (e.g. a future
+  // verification-link template), a stray `"` in the value would break out
+  // of the href attribute. Escape the URL before interpolating, so the
+  // href attribute stays sealed no matter what the value contains.
   return `
     <tr>
       <td style="padding:8px 0 8px 0;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">
           <tr>
             <td bgcolor="${EMAIL_COLORS.lime}" style="border-radius:8px; background:${EMAIL_COLORS.lime};">
-              <a href="${url}" target="_blank" rel="noopener" style="display:inline-block; padding:14px 22px; font-family:${EMAIL_FONT_STACK}; font-size:14px; font-weight:800; color:${EMAIL_COLORS.ink}; text-decoration:none; border-radius:8px;">
+              <a href="${esc(url)}" target="_blank" rel="noopener" style="display:inline-block; padding:14px 22px; font-family:${EMAIL_FONT_STACK}; font-size:14px; font-weight:800; color:${EMAIL_COLORS.ink}; text-decoration:none; border-radius:8px;">
                 ${esc(cta.label)} &nbsp;→
               </a>
             </td>

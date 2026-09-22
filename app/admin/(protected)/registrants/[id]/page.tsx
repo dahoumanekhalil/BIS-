@@ -2,12 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/admin/auth";
 import { can } from "@/lib/admin/rbac";
-import { getRegistrant, getRegistrantAccessContext } from "@/lib/admin/queries";
+import {
+  getRegistrant,
+  getRegistrantAccessContext,
+  getRegistrantRoomRegistrations
+} from "@/lib/admin/queries";
 import { AdminHeader } from "@/components/admin/header";
 import { StatusBadge, TierBadge } from "@/components/admin/ui";
 import { DeleteRegistrantButton } from "./delete-button";
 import { BadgePanel } from "./badge-panel";
 import { AccessMatrix } from "./access-matrix";
+import { RoomRegistrationsPanel } from "./room-registrations-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +37,20 @@ export default async function RegistrantDetail({
   const mayViewAccess = can(user.role, "access.view");
   const mayManageAccess = can(user.role, "access.manage");
   const mayManageBadge = can(user.role, "badge.manage");
-  const accessCtx = mayViewAccess
-    ? await getRegistrantAccessContext(id)
-    : null;
+  // Sub-Phase E — Room payment operations. Panel visibility is gated
+  // on the read permission (`access.view`) — anyone who can already see
+  // the access matrix should see the underlying room registrations that
+  // drive it. The per-row action buttons are gated separately by the
+  // finance/access permissions AND the server actions re-check both.
+  const mayConfirmRoomPayment = can(user.role, "payment.confirm.room");
+  const mayRefundRoomPayment = can(user.role, "payment.refund.room");
+  const mayCancelRoomRegistration = can(user.role, "access.manage");
+  const [accessCtx, roomRegistrations] = await Promise.all([
+    mayViewAccess ? getRegistrantAccessContext(id) : Promise.resolve(null),
+    mayViewAccess
+      ? getRegistrantRoomRegistrations(id)
+      : Promise.resolve([])
+  ]);
 
   const dzd = new Intl.NumberFormat("fr-FR", {
     style: "currency",
@@ -209,8 +225,21 @@ export default async function RegistrantDetail({
               {r.ticketCode ?? "—"}
             </p>
             <p className="mt-1 text-[12px] text-ink/50">
-              Utilisé par le check-in center pour valider l&apos;accès
+              Utilisé par le check-in center (flux manuel legacy).
             </p>
+            {/* Phase 19 — secure text check-in code (QR fallback). */}
+            <div className="mt-4 rounded-lg border border-cobalt/25 bg-cobalt/[0.03] p-3">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-cobalt">
+                Code d&apos;accès (QR fallback)
+              </p>
+              <p className="mt-1 font-mono text-[15px] font-black tracking-[0.14em] text-ink">
+                {r.checkinCode ?? "—"}
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-ink/55">
+                Saisissable manuellement au scanner quand le QR ne
+                fonctionne pas. Format à 12 caractères + tirets.
+              </p>
+            </div>
             <div className="mt-5 space-y-2 text-[13px]">
               <div className="flex items-center justify-between">
                 <span className="text-ink/55">Gate assigné</span>
@@ -327,6 +356,20 @@ export default async function RegistrantDetail({
               canManage={mayManageAccess}
             />
           </div>
+        )}
+
+        {/* Sub-Phase E — Room registrations & payment operations. Read
+            gated by access.view; per-action buttons re-check payment.*
+            or access.manage on the server side. Server actions remain
+            authoritative — the panel is UX gating only. */}
+        {mayViewAccess && (
+          <RoomRegistrationsPanel
+            participantId={id}
+            registrations={roomRegistrations}
+            canConfirmPayment={mayConfirmRoomPayment}
+            canRefundPayment={mayRefundRoomPayment}
+            canCancelRegistration={mayCancelRoomRegistration}
+          />
         )}
 
         {/* Phase 16 — Historique des accès.

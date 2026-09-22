@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePermission } from "@/lib/admin/auth";
 import { can } from "@/lib/admin/rbac";
 import { getAccessPointsWithUsage } from "@/lib/admin/queries";
@@ -32,6 +33,31 @@ export default async function AccessPointsAdminPage() {
       />
 
       <div className="space-y-6 p-6">
+        {/* Phase 17 cross-link: Spaces management is reachable from
+            here (not the sidebar). The Spaces UI is a human-readable
+            operational layer over these same AccessPoint rows —
+            configure identity, admission label, team, and content
+            there. */}
+        <section className="grid gap-3 rounded-card border border-cobalt/20 bg-cobalt/[0.03] p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div>
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-cobalt">
+              Gestion opérationnelle
+            </p>
+            <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink/75">
+              Les espaces (équipe check-in, activités, thèmes,
+              exposants, admission) se gèrent depuis la section
+              « Espaces ». Cette page reste la configuration
+              technique — slug, ordre, désactivation, suppression.
+            </p>
+          </div>
+          <Link
+            href="/admin/spaces"
+            className="inline-flex items-center justify-center gap-2 rounded-btn bg-cobalt px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-cobalt-700 sm:justify-self-end"
+          >
+            Gestion des espaces →
+          </Link>
+        </section>
+
         <section className="rounded-card border border-line bg-white p-5">
           <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-ink/50">
             À propos de cette page

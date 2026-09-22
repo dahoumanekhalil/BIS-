@@ -15,3 +15,4 @@ next-env.d.ts
 # stays local. Move future "notes" files here to keep them out of the
 # repository automatically.
 docs/
+certificates

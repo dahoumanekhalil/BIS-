@@ -7,6 +7,10 @@ export type EmailTemplateCategory =
   | "reminder"
   | "post-event"
   | "application"
+  | "security"
+  | "room"
+  | "contact"
+  | "system"
   | "custom";
 
 export type EmailTemplate = {
@@ -26,10 +30,15 @@ export const CATEGORY_LABEL: Record<EmailTemplateCategory, string> = {
   reminder: "Rappel",
   "post-event": "Post-événement",
   application: "Candidature",
+  security: "Sécurité",
+  room: "Salle",
+  contact: "Contact",
+  system: "Système",
   custom: "Personnalisé"
 };
 
 // Available variables that can be interpolated inside subject/body/blocks.
+// New keys added by the Email Infrastructure Phase are grouped at the bottom.
 export const EMAIL_VARIABLES = [
   "firstName",
   "lastName",
@@ -41,7 +50,29 @@ export const EMAIL_VARIABLES = [
   "paymentAmount",
   "paymentRef",
   "eventDate",
-  "eventVenue"
+  "eventVenue",
+
+  // Email Infrastructure — auth flows
+  "verificationUrl",
+  "resetUrl",
+  "expiresInHours",
+
+  // Email Infrastructure — room registration
+  "roomName",
+  "roomPrice",
+  "roomCurrency",
+
+  // Email Infrastructure — contact form relay
+  "contactName",
+  "contactEmail",
+  "contactOrganization",
+  "contactReason",
+  "contactSubject",
+  "contactMessage",
+
+  // Email Infrastructure — admin test
+  "adminName",
+  "issuedAt"
 ] as const;
 
 export type EmailVarKey = (typeof EMAIL_VARIABLES)[number];
@@ -421,6 +452,230 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
         "Nos équipes examineront votre profil et reviendront vers vous."
       ],
       note: "Cette confirmation n'implique pas d'engagement. Nous confirmerons toute collaboration après échange."
+    }
+  },
+
+  /* ------------------------------ SECURITY / AUTH ------------------------------ */
+
+  {
+    key: "auth-email-verify",
+    category: "security",
+    label: "Vérification d'adresse email",
+    description:
+      "Envoyé après création de compte pour confirmer l'adresse email.",
+    subject: "Confirmez votre adresse email · BIS 2026",
+    eyebrow: "BIS 2026 · Sécurité du compte",
+    content: {
+      eyebrow: "BIS 2026 · Sécurité du compte",
+      heading: "Confirmez votre adresse email",
+      paragraphs: [
+        "Bonjour {{firstName}}, votre compte a bien été créé sur bis-algeria.dz.",
+        "Pour finaliser l'activation, confirmez votre adresse email en cliquant sur le bouton ci-dessous. Ce lien est valable {{expiresInHours}} heures."
+      ],
+      cta: { label: "Confirmer mon adresse", url: "{{verificationUrl}}" },
+      note: "Si vous n'êtes pas à l'origine de cette création, ignorez ce message — aucun compte ne restera actif sans confirmation."
+    }
+  },
+  {
+    key: "auth-password-reset",
+    category: "security",
+    label: "Réinitialisation du mot de passe",
+    description:
+      "Envoyé quand l'utilisateur demande une réinitialisation du mot de passe.",
+    subject: "Réinitialisation de votre mot de passe · BIS 2026",
+    eyebrow: "BIS 2026 · Sécurité du compte",
+    content: {
+      eyebrow: "BIS 2026 · Sécurité du compte",
+      heading: "Réinitialisez votre mot de passe",
+      paragraphs: [
+        "Bonjour {{firstName}}, une demande de réinitialisation de mot de passe a été enregistrée pour ce compte.",
+        "Utilisez le bouton ci-dessous pour définir un nouveau mot de passe. Ce lien est valable {{expiresInHours}} heure. Après utilisation, toutes vos sessions actives seront révoquées."
+      ],
+      cta: { label: "Réinitialiser mon mot de passe", url: "{{resetUrl}}" },
+      note: "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message. Votre mot de passe reste inchangé."
+    }
+  },
+  {
+    key: "auth-password-changed",
+    category: "security",
+    label: "Mot de passe modifié",
+    description:
+      "Notification de sécurité envoyée après un changement de mot de passe réussi.",
+    subject: "Votre mot de passe a été modifié · BIS 2026",
+    eyebrow: "BIS 2026 · Alerte sécurité",
+    content: {
+      eyebrow: "BIS 2026 · Alerte sécurité",
+      heading: "Votre mot de passe vient d'être modifié",
+      paragraphs: [
+        "Bonjour {{firstName}}, nous vous confirmons que le mot de passe associé à votre compte BIS 2026 a été modifié.",
+        "Toutes les sessions ouvertes ont été déconnectées. Vous devrez vous reconnecter sur vos autres appareils."
+      ],
+      note: "Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement l'équipe BIS 2026."
+    }
+  },
+
+  /* ------------------------------ ROOM REGISTRATION ------------------------------ */
+
+  {
+    key: "room-registration-free-confirmed",
+    category: "room",
+    label: "Inscription salle gratuite confirmée",
+    description: "Confirmation d'inscription à une salle gratuite.",
+    subject: "Inscription confirmée · {{roomName}}",
+    eyebrow: "BIS 2026 · Inscription salle",
+    content: {
+      eyebrow: "BIS 2026 · Inscription salle",
+      heading: "Votre inscription à {{roomName}} est confirmée.",
+      paragraphs: [
+        "Bonjour {{firstName}}, votre place est réservée pour la salle {{roomName}} lors du BIS 2026.",
+        "Présentez votre badge digital à l'entrée de la salle le jour J."
+      ],
+      infoCard: {
+        title: "Détails",
+        rows: [
+          { label: "Salle", value: "{{roomName}}" },
+          { label: "Date", value: "{{eventDate}}" },
+          { label: "Lieu", value: "{{eventVenue}}" }
+        ]
+      }
+    }
+  },
+  {
+    key: "room-registration-pending-payment",
+    category: "room",
+    label: "Inscription salle · paiement attendu",
+    description:
+      "Notification qu'une inscription à une salle payante attend le paiement.",
+    subject: "Paiement en attente · {{roomName}}",
+    eyebrow: "BIS 2026 · Inscription salle",
+    content: {
+      eyebrow: "BIS 2026 · Inscription salle",
+      heading: "Votre inscription attend votre paiement.",
+      paragraphs: [
+        "Bonjour {{firstName}}, votre demande d'inscription à la salle {{roomName}} est enregistrée.",
+        "Elle sera confirmée dès la réception de votre paiement."
+      ],
+      infoCard: {
+        title: "Détails",
+        rows: [
+          { label: "Salle", value: "{{roomName}}" },
+          { label: "Montant", value: "{{roomPrice}} {{roomCurrency}}" },
+          { label: "Date", value: "{{eventDate}}" }
+        ]
+      },
+      note: "Notre équipe reviendra vers vous pour finaliser le paiement."
+    }
+  },
+  {
+    key: "room-registration-paid",
+    category: "room",
+    label: "Salle payante confirmée",
+    description:
+      "Confirmation d'inscription après confirmation du paiement (admin).",
+    subject: "Paiement confirmé · {{roomName}}",
+    eyebrow: "BIS 2026 · Paiement salle",
+    content: {
+      eyebrow: "BIS 2026 · Paiement salle",
+      heading: "Votre inscription à {{roomName}} est confirmée.",
+      paragraphs: [
+        "Bonjour {{firstName}}, nous avons bien enregistré le paiement de votre place pour la salle {{roomName}}.",
+        "Votre accès est activé. Présentez votre badge digital à l'entrée de la salle le jour J."
+      ],
+      infoCard: {
+        title: "Récapitulatif",
+        rows: [
+          { label: "Salle", value: "{{roomName}}" },
+          { label: "Montant réglé", value: "{{roomPrice}} {{roomCurrency}}" },
+          { label: "Date", value: "{{eventDate}}" }
+        ]
+      }
+    }
+  },
+  {
+    key: "room-registration-refunded",
+    category: "room",
+    label: "Salle · remboursement effectué",
+    description: "Notification de remboursement d'une inscription salle payante.",
+    subject: "Remboursement effectué · {{roomName}}",
+    eyebrow: "BIS 2026 · Remboursement",
+    content: {
+      eyebrow: "BIS 2026 · Remboursement",
+      heading: "Votre paiement a été remboursé.",
+      paragraphs: [
+        "Bonjour {{firstName}}, votre inscription à la salle {{roomName}} a été remboursée.",
+        "Selon votre banque, le remboursement peut prendre jusqu'à 10 jours ouvrés pour apparaître sur votre compte."
+      ],
+      infoCard: {
+        title: "Détails",
+        rows: [
+          { label: "Salle", value: "{{roomName}}" },
+          { label: "Montant", value: "{{roomPrice}} {{roomCurrency}}" }
+        ]
+      }
+    }
+  },
+  {
+    key: "room-registration-cancelled",
+    category: "room",
+    label: "Salle · inscription annulée",
+    description: "Notification d'annulation d'une inscription salle.",
+    subject: "Inscription annulée · {{roomName}}",
+    eyebrow: "BIS 2026 · Annulation salle",
+    content: {
+      eyebrow: "BIS 2026 · Annulation salle",
+      heading: "Votre inscription à {{roomName}} a été annulée.",
+      paragraphs: [
+        "Bonjour {{firstName}}, votre inscription à la salle {{roomName}} a été annulée.",
+        "Vous pouvez toujours accéder aux autres espaces du BIS 2026 selon votre pass."
+      ]
+    }
+  },
+
+  /* ------------------------------ CONTACT / SYSTEM ------------------------------ */
+
+  {
+    key: "contact-form-relay",
+    category: "contact",
+    label: "Formulaire de contact · relais",
+    description:
+      "Relais interne d'une soumission du formulaire de contact vers l'équipe.",
+    subject: "[Contact BIS 2026] {{contactSubject}}",
+    eyebrow: "BIS 2026 · Contact",
+    content: {
+      eyebrow: "BIS 2026 · Contact",
+      heading: "Nouveau message du formulaire de contact",
+      paragraphs: [
+        "Un nouveau message a été soumis via le formulaire de contact du site.",
+        "{{contactMessage}}"
+      ],
+      infoCard: {
+        title: "Expéditeur",
+        rows: [
+          { label: "Nom", value: "{{contactName}}" },
+          { label: "Email", value: "{{contactEmail}}" },
+          { label: "Organisation", value: "{{contactOrganization}}" },
+          { label: "Motif", value: "{{contactReason}}" },
+          { label: "Sujet", value: "{{contactSubject}}" }
+        ]
+      }
+    }
+  },
+  {
+    key: "admin-test-email",
+    category: "system",
+    label: "Email de test SMTP",
+    description:
+      "Envoyé depuis la page d'administration SMTP pour vérifier l'infrastructure.",
+    subject: "[Test] Configuration email BIS 2026",
+    eyebrow: "BIS 2026 · Diagnostic",
+    content: {
+      eyebrow: "BIS 2026 · Diagnostic",
+      heading: "Test d'envoi SMTP réussi.",
+      paragraphs: [
+        "Bonjour, ce message a été envoyé par {{adminName}} depuis la console d'administration BIS 2026 pour valider la configuration SMTP.",
+        "Émis à : {{issuedAt}}."
+      ],
+      note: "Ce message est un test technique. Aucune action n'est requise."
     }
   }
 ];

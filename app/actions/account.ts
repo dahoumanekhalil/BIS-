@@ -18,6 +18,8 @@ import {
   reset
 } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/client-ip";
+import { issueEmailVerificationToken } from "@/lib/account/email-verification";
+import { sendVerificationEmail } from "@/lib/email/triggers/auth";
 
 export type AccountActionResult =
   | { ok: true }
@@ -83,11 +85,11 @@ export async function registerAccount(
   });
   if (existing) return duplicate;
 
-  let user: { id: string };
+  let user: { id: string; email: string; firstName: string; lastName: string };
   try {
     user = await prisma.accountUser.create({
       data: { firstName, lastName, email, passwordHash: hashPassword(password) },
-      select: { id: true }
+      select: { id: true, email: true, firstName: true, lastName: true }
     });
   } catch (error) {
     // Concurrent signup with the same email won the unique-index race.
@@ -96,6 +98,29 @@ export async function registerAccount(
   }
 
   record(ipKey);
+
+  // Verification email. Failure here MUST NOT roll back the successful
+  // signup (spec §26) — the account is usable without verification, and
+  // the user can request a new verification link later. We catch every
+  // failure defensively so a mail-server outage cannot break registration.
+  try {
+    const issued = await issueEmailVerificationToken({
+      userId: user.id,
+      email: user.email
+    });
+    await sendVerificationEmail({
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      rawToken: issued.rawToken,
+      expiresAt: issued.expiresAt
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[account] verification email failed to queue", err instanceof Error ? err.message : err);
+  }
+
   const token = await createAccountSession(user.id, true);
   await setAccountCookie(token, true);
   return { ok: true };

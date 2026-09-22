@@ -168,6 +168,10 @@ export async function listRegistrants(filters: RegistrantFilters) {
 export async function getRegistrant(id: string) {
   return prisma.participant.findUnique({
     where: { id },
+    // Phase 19 note — `checkinCode` is on Participant and returned by
+    // the default findUnique select, so no additional wiring is
+    // required on this include. The registrant detail page reads
+    // r.checkinCode directly.
     include: {
       checkIns: {
         orderBy: { scannedAt: "desc" },
@@ -252,6 +256,80 @@ export async function getAccessPointsWithUsage() {
     permissionCount: r._count.permissions
   }));
 }
+
+// Sub-Phase E — Admin room-registrations panel loader.
+//
+// Returns every RoomRegistration for a participant, joined to its
+// AccessPoint (name/slug/admission mode/price/currency/active) and the
+// current ParticipantAccess row for the same pair. The panel displays
+// each registration's status, frozen price snapshot, lifecycle dates,
+// plus whether the corresponding room access is currently effective
+// AND whether that access is owned by REGISTRATION or ADMIN (Sub-Phase
+// D's ownership boundary). The service actions remain the trusted
+// authorization boundary — this loader is read-only.
+//
+// SECURITY: whitelist select. Internal counters, `updatedAt`, and any
+// PII beyond what Participant/AccessPoint already exposes are excluded.
+// `RoomPaymentEvent` history is NOT joined here — the AuditLog and the
+// existing /logs page cover per-transition history without dumping raw
+// provider references into the panel.
+export async function getRegistrantRoomRegistrations(participantId: string) {
+  const [registrations, permissions] = await Promise.all([
+    prisma.roomRegistration.findMany({
+      where: { participantId },
+      orderBy: [{ registeredAt: "desc" }],
+      select: {
+        id: true,
+        status: true,
+        priceMinorSnapshot: true,
+        currencySnapshot: true,
+        paymentRef: true,
+        registeredAt: true,
+        paidAt: true,
+        cancelledAt: true,
+        refundedAt: true,
+        failedAt: true,
+        expiresAt: true,
+        accessPoint: {
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            admissionMode: true,
+            active: true
+          }
+        }
+      }
+    }),
+    prisma.participantAccess.findMany({
+      where: { participantId },
+      select: { accessPointId: true, granted: true, source: true }
+    })
+  ]);
+
+  const permMap = new Map(
+    permissions.map((p) => [p.accessPointId, p] as const)
+  );
+  return registrations.map((r) => ({
+    id: r.id,
+    status: r.status,
+    priceMinorSnapshot: r.priceMinorSnapshot,
+    currencySnapshot: r.currencySnapshot,
+    paymentRef: r.paymentRef,
+    registeredAt: r.registeredAt,
+    paidAt: r.paidAt,
+    cancelledAt: r.cancelledAt,
+    refundedAt: r.refundedAt,
+    failedAt: r.failedAt,
+    expiresAt: r.expiresAt,
+    accessPoint: r.accessPoint,
+    access: permMap.get(r.accessPoint.id) ?? null
+  }));
+}
+
+export type AdminRoomRegistrationRow = Awaited<
+  ReturnType<typeof getRegistrantRoomRegistrations>
+>[number];
 
 // Phase 7 — admin access-control context for the registrant detail page.
 // Returns everything the Badge panel + Access matrix need in a single

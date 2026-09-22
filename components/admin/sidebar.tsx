@@ -62,12 +62,6 @@ const GROUPS: NavGroup[] = [
         icon: <Icon d="M4 7h4V3M20 7h-4V3M4 17h4v4M20 17h-4v4M9 12h6M12 9v6" />
       },
       {
-        href: "/admin/scan/history",
-        label: "Historique de scan",
-        permission: "checkin.view",
-        icon: <Icon d="M12 8v5l3 2 M12 21a9 9 0 100-18 9 9 0 000 18z" />
-      },
-      {
         href: "/admin/applications",
         label: "Applications",
         permission: "applications.view",
@@ -92,14 +86,7 @@ const GROUPS: NavGroup[] = [
         permission: "speakers.view",
         icon: <Icon d="M12 12a4 4 0 100-8 4 4 0 000 8zM6 21a6 6 0 0112 0" />
       },
-      {
-        href: "/admin/gates",
-        label: "Gates",
-        permission: "gates.view",
-        soon: true,
-        icon: <Icon d="M3 20V6a2 2 0 012-2h4v16H5a2 2 0 01-2 0zM15 4h4a2 2 0 012 2v14a2 2 0 01-2 0h-4V4z" />
-      },
-      // Phase 8 — AccessPoint administration. Read gated by access.view;
+// Phase 8 — AccessPoint administration. Read gated by access.view;
       // mutations require settings.manage (checked server-side).
       {
         href: "/admin/access-points",
@@ -107,6 +94,10 @@ const GROUPS: NavGroup[] = [
         permission: "access.view",
         icon: <Icon d="M12 2l9 4v6c0 5-3.5 9-9 10-5.5-1-9-5-9-10V6z M9 12l2 2 4-4" />
       },
+      // Phase 17 — Space management (operational view over AccessPoint).
+      // Same permission gates as Phase 8 (access.view / settings.manage).
+      // Reachable from /admin/access-points → "Gestion des espaces →"
+      // instead of the sidebar to reduce nav duplication.
       {
         href: "/admin/amenities",
         label: "Amenities",
@@ -178,7 +169,6 @@ const GROUPS: NavGroup[] = [
         href: "/admin/settings",
         label: "Settings",
         permission: "settings.manage",
-        soon: true,
         icon: <Icon d="M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
       }
     ]
