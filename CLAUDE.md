@@ -1,4 +1,4 @@
-# BIS 2026 — Project instructions for Claude Code
+# BIS 2027 — Project instructions for Claude Code
 
 ## Security is critical
 

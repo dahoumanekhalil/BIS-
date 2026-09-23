@@ -55,7 +55,7 @@ const OPTIONS: Option[] = [
     theme: "lime",
     title: "Sponsor",
     description:
-      "Je représente une marque ou une entreprise et souhaite explorer une opportunité de sponsoring avec le BIS 2026.",
+      "Je représente une marque ou une entreprise et souhaite explorer une opportunité de sponsoring avec le BIS 2027.",
     cta: "Explorer le sponsoring",
     hint: "Notre équipe partenariats vous répond sous 48 h.",
     icon: <IconStar />
@@ -79,7 +79,7 @@ const OPTIONS: Option[] = [
     theme: "lime",
     title: "Intervenant",
     description:
-      "Je souhaite proposer mon expertise, partager mon expérience et contribuer au programme du BIS 2026.",
+      "Je souhaite proposer mon expertise, partager mon expérience et contribuer au programme du BIS 2027.",
     cta: "Proposer mon profil",
     hint: "Le comité éditorial étudie chaque candidature.",
     icon: <IconMic />

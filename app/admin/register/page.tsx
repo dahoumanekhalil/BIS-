@@ -3,7 +3,7 @@ import { getCurrentAdmin } from "@/lib/admin/auth";
 import { RegisterForm } from "./register-form";
 
 export const metadata = {
-  title: "BIS 2026 · Inscription Admin"
+  title: "BIS 2027 · Inscription Admin"
 };
 
 export default async function AdminRegisterPage() {
@@ -33,7 +33,7 @@ export default async function AdminRegisterPage() {
             Créer un compte administrateur
           </h1>
           <p className="mt-2 text-[13px] leading-relaxed text-white/45">
-            Inscrivez-vous pour accéder à la plateforme d'administration du sommet BIS 2026.
+            Inscrivez-vous pour accéder à la plateforme d'administration du sommet BIS 2027.
           </p>
         </div>
 

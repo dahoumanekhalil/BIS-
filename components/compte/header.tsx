@@ -43,7 +43,7 @@ export function CompteHeader({
               Bonjour, {firstName}.
             </h1>
             <p className="mt-2 text-[13px] leading-relaxed text-white/70 sm:text-[13.5px]">
-              Votre expérience BIS 2026 — badge, accès, inscription et
+              Votre expérience BIS 2027 — badge, accès, inscription et
               demandes en un seul endroit.
             </p>
           </div>

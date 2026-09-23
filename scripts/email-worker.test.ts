@@ -20,7 +20,7 @@ before(() => {
   process.env.SMTP_HOST = process.env.SMTP_HOST || "smtp.example.com";
   process.env.SMTP_PORT = process.env.SMTP_PORT || "587";
   process.env.SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || "no-reply@example.com";
-  process.env.SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || "BIS 2026 Test";
+  process.env.SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || "BIS 2027 Test";
 });
 
 after(() => {
@@ -62,7 +62,7 @@ describe("email worker + queue", async () => {
         fullName: "Ada Lovelace",
         email: "test-queue@example.com",
         tier: "STANDARD",
-        eventDate: "15 nov 2026",
+        eventDate: "3-5 jan 2027",
         eventVenue: "CIC Alger"
       }
     });
@@ -88,7 +88,7 @@ describe("email worker + queue", async () => {
         fullName: "Grace Hopper",
         email: "test-process@example.com",
         tier: "STANDARD",
-        eventDate: "15 nov 2026",
+        eventDate: "3-5 jan 2027",
         eventVenue: "CIC Alger"
       }
     });
@@ -118,7 +118,7 @@ describe("email worker + queue", async () => {
         fullName: "Rear Admiral",
         email: "test-idem@example.com",
         tier: "STANDARD",
-        eventDate: "15 nov 2026",
+        eventDate: "3-5 jan 2027",
         eventVenue: "CIC Alger"
       }
     });
@@ -134,7 +134,7 @@ describe("email worker + queue", async () => {
         fullName: "Rear Admiral",
         email: "test-idem@example.com",
         tier: "STANDARD",
-        eventDate: "15 nov 2026",
+        eventDate: "3-5 jan 2027",
         eventVenue: "CIC Alger"
       }
     });

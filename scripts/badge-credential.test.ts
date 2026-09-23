@@ -44,8 +44,8 @@ before(async () => {
       data: {
         slug: `badge-test-event-${Date.now()}`,
         name: "Badge Test Event",
-        startsAt: new Date("2026-11-15T08:00:00Z"),
-        endsAt: new Date("2026-11-17T18:00:00Z"),
+        startsAt: new Date("2017-01-03T08:00:00Z"),
+        endsAt: new Date("2017-01-05T18:00:00Z"),
         city: "Alger",
         venue: "Test",
         country: "DZ"

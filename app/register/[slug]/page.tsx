@@ -25,7 +25,7 @@ export async function generateMetadata({
   if (!choice) return { title: "Participation" };
   return {
     title: `Participer · ${PARTICIPATION_LABEL[choice]}`,
-    description: "Étape 3 de l'inscription BIS 2026."
+    description: "Étape 3 de l'inscription BIS 2027."
   };
 }
 
@@ -34,7 +34,7 @@ const INTRO_BY_CHOICE: Record<
   { title: string; intro: string; steps: { n: string; title: string; body: string }[] }
 > = {
   VISITOR: {
-    title: "Confirmez votre inscription au BIS 2026.",
+    title: "Confirmez votre inscription au BIS 2027.",
     intro:
       "Aucune information supplémentaire n'est requise. Confirmez pour finaliser votre inscription.",
     steps: [
@@ -76,7 +76,7 @@ const INTRO_BY_CHOICE: Record<
   CONTENT_CREATOR: {
     title: "Complétez votre candidature créateur.",
     intro:
-      "Aidez-nous à comprendre votre univers et la façon dont vous couvririez BIS 2026.",
+      "Aidez-nous à comprendre votre univers et la façon dont vous couvririez BIS 2027.",
     steps: [
       { n: "01", title: "Votre univers", body: "Plateforme, audience, contenu." },
       { n: "02", title: "Votre proposition", body: "Ce que vous produiriez." },

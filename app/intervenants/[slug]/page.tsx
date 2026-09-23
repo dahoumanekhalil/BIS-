@@ -54,7 +54,7 @@ export default async function SpeakerDetailPage({
 
             <div className="lg:col-span-7">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/50">
-                Intervenant · Édition 2026
+                Intervenant · Édition 2027
               </p>
               <h1 className="mt-4 font-display text-display-lg text-balance">
                 {speaker.fullName}

@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Espaces",
-  description: "Les quatre univers de GET+ SUMMIT 2026 — Impact Stage, Builders Lab, Creators Studio, Tech Frontier."
+  description: "Les quatre univers de GET+ SUMMIT 2027 — Impact Stage, Builders Lab, Creators Studio, Tech Frontier."
 };
 
 export const revalidate = 300;

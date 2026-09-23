@@ -33,8 +33,8 @@ const DETAILED_TABLE_MAX = 200;
 const HOURLY_ROWS_HARD_MAX = 200_000; // sanity cap for the bucket scan
 const SPACE_DETAIL_ACTIVITY_MAX = 40; // per-space detail recent activity cap
 
-// Event timezone. BIS 2026 takes place in Algiers (CIC Alger, 15–17
-// Nov 2026), UTC+1. Every hour-of-day bucket, "today" / "yesterday"
+// Event timezone. BIS 2027 takes place in Algiers (CIC Alger, 15–17
+// Nov 2027), UTC+1. Every hour-of-day bucket, "today" / "yesterday"
 // preset, and formatted hour label uses this timezone. Never
 // `Date.getHours()` — that reads server-local time (typically UTC in
 // prod), which drifts the "peak hour" by one hour and straddles

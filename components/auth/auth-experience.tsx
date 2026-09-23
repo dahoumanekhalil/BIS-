@@ -47,7 +47,7 @@ export function AuthExperience({ initialMode }: { initialMode: Mode }) {
       <div className="container-page relative flex min-h-[calc(100vh-var(--ticker-height)-var(--nav-height))] flex-col items-center justify-center py-16 lg:py-20">
         <div className="mb-10 text-center">
           <p className="eyebrow justify-center">
-            <span className="h-px w-6 bg-ink/40" /> Accès BIS 2026
+            <span className="h-px w-6 bg-ink/40" /> Accès BIS 2027
           </p>
           <h1 className="mt-4 font-display text-[clamp(1.75rem,3vw,2.5rem)] font-black tracking-tight">
             {isRegister ? (
@@ -73,7 +73,7 @@ export function AuthExperience({ initialMode }: { initialMode: Mode }) {
         </div>
 
         <p className="mt-8 text-center text-[11px] uppercase tracking-[0.22em] text-ink/40">
-          15 · 17 Novembre 2026 · CIC Alger
+          15 · 17 Novembre 2027 · CIC Alger
         </p>
       </div>
     </section>
@@ -129,7 +129,7 @@ function DesktopAuth({
           <FormShell
             visible={isRegister}
             title="Créer un compte"
-            subtitle="Rejoignez la communauté BIS 2026."
+            subtitle="Rejoignez la communauté BIS 2027."
           >
             <RegisterForm />
           </FormShell>
@@ -296,7 +296,7 @@ function BrandPanelContent({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-lime" />
           </span>
-          BIS · Édition 2026
+          BIS · Édition 2027
         </span>
       </div>
 
@@ -319,8 +319,8 @@ function BrandPanelContent({
         </h2>
         <p className="mt-5 max-w-[22rem] text-[13.5px] leading-[1.65] text-white/80">
           {isRegister
-            ? "Reprenez votre parcours BIS 2026. Votre programme et vos favoris vous attendent."
-            : "Créez votre compte pour composer votre journée et recevoir votre pass digital BIS 2026."}
+            ? "Reprenez votre parcours BIS 2027. Votre programme et vos favoris vous attendent."
+            : "Créez votre compte pour composer votre journée et recevoir votre pass digital BIS 2027."}
         </p>
 
         {/* Feature chips — softer than a bullet list, easier on the eye */}
@@ -383,7 +383,7 @@ function BrandPanelContent({
 
       {/* Bottom soft strip — no divider, just spaced with muted color */}
       <div className="mt-10 flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.24em] text-white/50">
-        <span>15 · 17 Nov 2026</span>
+        <span>15 · 17 Nov 2027</span>
         <span className="hidden sm:inline">CIC Alger</span>
       </div>
     </div>
@@ -650,7 +650,7 @@ function RegisterForm() {
           >
             conditions
           </Link>{" "}
-          et la politique de confidentialité BIS 2026.
+          et la politique de confidentialité BIS 2027.
           {errors.consent && (
             <span className="mt-1 block text-[11px] text-red-600">
               {errors.consent}
@@ -876,7 +876,7 @@ function MobileAuth({
         }}
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/70">
-          BIS · Édition 2026
+          BIS · Édition 2027
         </p>
         <h2 className="mt-2 font-display text-2xl font-black leading-tight tracking-tight">
           {isRegister ? (

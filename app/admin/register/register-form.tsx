@@ -65,7 +65,7 @@ export function RegisterForm() {
       <Submit />
 
       <p className="pt-3 text-center text-[10.5px] text-white/30">
-        En créant un compte, vous acceptez les conditions d'utilisation de la plateforme BIS 2026.
+        En créant un compte, vous acceptez les conditions d'utilisation de la plateforme BIS 2027.
       </p>
     </form>
   );

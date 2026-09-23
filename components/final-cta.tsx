@@ -28,7 +28,7 @@ export function FinalCTA() {
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-white/80">
             Places limitées. Inscrivez-vous maintenant pour garantir votre accès
-            au BIS Algeria — 15 Novembre 2026.
+            au BIS Algeria — 3-5 Janvier 2027.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href="/inscription" className="btn-lime-lg">

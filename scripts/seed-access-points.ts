@@ -1,6 +1,6 @@
 import { PrismaClient, AccessPointType } from "@prisma/client";
 
-// Idempotent seed: upserts the six BIS 2026 AccessPoints by slug. Safe to
+// Idempotent seed: upserts the six BIS 2027 AccessPoints by slug. Safe to
 // re-run at any time; will not disturb existing rows other than syncing
 // display name / order / active. Use this instead of `npm run db:seed`
 // (which is destructive).

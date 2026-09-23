@@ -55,7 +55,7 @@ export function LoginForm({
       <Submit />
 
       <p className="pt-3 text-center text-[10.5px] text-white/30">
-        Accès réservé aux administrateurs autorisés du sommet BIS 2026.
+        Accès réservé aux administrateurs autorisés du sommet BIS 2027.
       </p>
     </form>
   );

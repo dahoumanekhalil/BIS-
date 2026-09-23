@@ -130,7 +130,7 @@ export default async function AdminSponsorsPage({
         {partners.length === 0 ? (
           <EmptyState
             title="Aucun sponsor pour le moment."
-            hint="Créez votre premier sponsor pour l'édition 2026."
+            hint="Créez votre premier sponsor pour l'édition 2027."
             action={
               canManage ? (
                 <Link

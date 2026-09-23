@@ -61,14 +61,14 @@ export function Footer() {
           <ul className="mt-4 space-y-2.5 text-sm text-white/80">
             <li>contact@bis-algeria.dz</li>
             <li>BIS Algeria</li>
-            <li>15 Nov 2026 · CIC Alger</li>
+            <li>3-5 Jan 2027 · CIC Alger</li>
           </ul>
         </div>
       </div>
 
       <div className="border-t border-white/10">
         <div className="container-page flex flex-col items-start justify-between gap-3 py-6 text-xs text-white/50 sm:flex-row sm:items-center">
-          <p>© 2026 BIS Algeria. Tous droits réservés.</p>
+          <p>© 2027 BIS Algeria. Tous droits réservés.</p>
           <p>Alger · Algérie</p>
         </div>
       </div>

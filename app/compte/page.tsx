@@ -45,7 +45,7 @@ export default async function ComptePage() {
       <div className="mx-auto max-w-2xl">
         <CompteCard
           eyebrow="Inscription requise"
-          title="Finalisez votre inscription BIS 2026"
+          title="Finalisez votre inscription BIS 2027"
         >
           <p className="text-[14px] leading-relaxed text-ink/70">
             Votre compte est actif, mais votre inscription au sommet n&apos;est
@@ -72,7 +72,7 @@ export default async function ComptePage() {
       {/* ─── Left column (2 cols wide on lg) ────────────────────────── */}
       <div className="grid gap-6 lg:col-span-2">
         <CompteCard
-          eyebrow="Badge BIS 2026"
+          eyebrow="Badge BIS 2027"
           title="Votre credential digital"
           action={{ href: "/compte/badge", label: "Voir mon badge" }}
         >
@@ -210,7 +210,7 @@ export default async function ComptePage() {
           </CompteCard>
         )}
 
-        <CompteCard eyebrow="L'événement" title="BIS 2026">
+        <CompteCard eyebrow="L'événement" title="BIS 2027">
           <dl>
             <CompteRow label="Date" value={eventInfo.date} />
             <CompteRow label="Lieu" value={eventInfo.location} />

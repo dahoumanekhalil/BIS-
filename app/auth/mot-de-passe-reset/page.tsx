@@ -4,7 +4,7 @@ import { ResetForm } from "./reset-form";
 
 export const metadata = {
   title: "Réinitialisation du mot de passe",
-  description: "Définissez un nouveau mot de passe pour votre compte BIS 2026."
+  description: "Définissez un nouveau mot de passe pour votre compte BIS 2027."
 };
 
 export default async function MotDePasseResetPage({

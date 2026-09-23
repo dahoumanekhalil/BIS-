@@ -9,13 +9,13 @@ export function formatNumber(n: number): string {
 }
 
 export const eventInfo = {
-  name: "Algeria Brand Impact Summit 2026",
-  shortName: "BIS 2026",
+  name: "Algeria Brand Impact Summit 2027",
+  shortName: "BIS 2027",
   brand: "B.I.S+",
   wordmark: "GET+",
   tagline: "Le sommet de l'impact africain",
-  date: "15 Novembre 2026",
-  dateISO: "2026-11-15",
+  date: "3-5 Janvier 2027",
+  dateISO: "2027-11-15",
   location: "CIC Alger",
   country: "Algérie",
   region: "BIS · Algeria",

@@ -39,8 +39,8 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Détail d'un espace" };
 
 const PRESET_KEYS = new Set(["today", "yesterday", "7d", "event", "all"]);
-const EVENT_START = new Date("2026-11-15T00:00:00+01:00");
-const EVENT_END = new Date("2026-11-17T22:59:59.999+01:00");
+const EVENT_START = new Date("2017-01-03T00:00:00+01:00");
+const EVENT_END = new Date("2017-01-05T22:59:59.999+01:00");
 
 type PageProps = {
   params: Promise<{ "access-point-slug": string }>;

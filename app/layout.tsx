@@ -16,12 +16,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(eventInfo.siteUrl),
   title: {
     default: `${eventInfo.name} — BIS`,
-    template: `%s · BIS 2026`
+    template: `%s · BIS 2027`
   },
   description: eventInfo.description,
   keywords: [
     "Algeria Brand Impact Summit",
-    "BIS 2026",
+    "BIS 2027",
     "BIS Algeria",
     "Sommet Alger",
     "GET+ Summit",

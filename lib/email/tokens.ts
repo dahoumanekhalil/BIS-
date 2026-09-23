@@ -48,8 +48,8 @@ export type EmailBrandInfo = {
 
 export const EMAIL_BRAND: EmailBrandInfo = {
   eventName: "Algeria Brand Impact Summit",
-  editionLabel: "BIS 2026",
-  eventDate: "15 – 17 novembre 2026",
+  editionLabel: "BIS 2027",
+  eventDate: "15 – 17 novembre 2027",
   eventVenue: "CIC Alger",
   eventCity: "Alger, Algérie",
   legalName: "Algeria Brand Impact Summit",

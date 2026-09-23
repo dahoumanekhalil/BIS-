@@ -110,7 +110,7 @@ export function SpeakersDirectory({
           {filtered.length} {filtered.length > 1 ? "intervenants" : "intervenant"}{" "}
           affichés
         </span>
-        <span className="hidden sm:inline">Édition 2026 · CIC Alger</span>
+        <span className="hidden sm:inline">Édition 2027 · CIC Alger</span>
       </div>
 
       {/* Grid */}

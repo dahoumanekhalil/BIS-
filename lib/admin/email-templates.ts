@@ -85,13 +85,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     category: "onboarding",
     label: "Bienvenue",
     description: "Confirmation d'inscription initiale, ton chaleureux.",
-    subject: "Bienvenue au BIS 2026, {{firstName}}",
-    eyebrow: "BIS 2026 · Inscription",
+    subject: "Bienvenue au BIS 2027, {{firstName}}",
+    eyebrow: "BIS 2027 · Inscription",
     content: {
-      eyebrow: "BIS 2026 · Inscription",
-      heading: "Bienvenue au BIS 2026, {{firstName}}.",
+      eyebrow: "BIS 2027 · Inscription",
+      heading: "Bienvenue au BIS 2027, {{firstName}}.",
       paragraphs: [
-        "Merci de vous être inscrit·e au Algeria Brand Impact Summit 2026. Votre profil est enregistré.",
+        "Merci de vous être inscrit·e au Algeria Brand Impact Summit 2027. Votre profil est enregistré.",
         "Nous confirmerons votre accès dès la finalisation de votre paiement. Vous recevrez alors votre pass digital et votre porte d'accès."
       ],
       infoCard: {
@@ -114,12 +114,12 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Paiement confirmé",
     description: "Confirmation du règlement + rappel du ticket.",
     subject: "Paiement confirmé · Ticket {{ticketCode}}",
-    eyebrow: "BIS 2026 · Paiement",
+    eyebrow: "BIS 2027 · Paiement",
     content: {
-      eyebrow: "BIS 2026 · Paiement",
+      eyebrow: "BIS 2027 · Paiement",
       heading: "Votre paiement est confirmé.",
       paragraphs: [
-        "Bonjour {{firstName}}, nous avons bien reçu votre paiement pour le BIS 2026. Votre inscription est maintenant validée.",
+        "Bonjour {{firstName}}, nous avons bien reçu votre paiement pour le BIS 2027. Votre inscription est maintenant validée.",
         "Conservez le code ticket ci-dessous — il vous sera demandé à l'entrée le jour J."
       ],
       infoCard: {
@@ -139,13 +139,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     category: "payment",
     label: "Rappel de paiement",
     description: "Relance pour finaliser le règlement — ton neutre.",
-    subject: "Finalisez votre inscription au BIS 2026",
-    eyebrow: "BIS 2026 · Paiement en attente",
+    subject: "Finalisez votre inscription au BIS 2027",
+    eyebrow: "BIS 2027 · Paiement en attente",
     content: {
-      eyebrow: "BIS 2026 · Paiement en attente",
+      eyebrow: "BIS 2027 · Paiement en attente",
       heading: "Votre inscription nécessite encore une action.",
       paragraphs: [
-        "Bonjour {{firstName}}, votre inscription au BIS 2026 est en attente de paiement.",
+        "Bonjour {{firstName}}, votre inscription au BIS 2027 est en attente de paiement.",
         "Pour sécuriser votre place au {{eventVenue}} le {{eventDate}}, merci de finaliser votre règlement."
       ],
       infoCard: {
@@ -164,11 +164,11 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     category: "logistics",
     label: "Ticket & QR délivré",
     description: "Envoi du code d'accès pour le check-in — visuel fort.",
-    subject: "Votre pass BIS 2026 · {{ticketCode}}",
-    eyebrow: "BIS 2026 · Accès",
+    subject: "Votre pass BIS 2027 · {{ticketCode}}",
+    eyebrow: "BIS 2027 · Accès",
     content: {
-      eyebrow: "BIS 2026 · Accès",
-      heading: "Votre accès au BIS 2026 est prêt.",
+      eyebrow: "BIS 2027 · Accès",
+      heading: "Votre accès au BIS 2027 est prêt.",
       paragraphs: [
         "Bonjour {{firstName}}, votre pass digital est disponible. Présentez le code ci-dessous à l'entrée — nous vous accueillerons dès 09h00."
       ],
@@ -188,10 +188,10 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     category: "logistics",
     label: "Attribution de la porte",
     description: "Notification de la porte physique assignée.",
-    subject: "Votre porte d'accès BIS 2026 · {{gate}}",
-    eyebrow: "BIS 2026 · Porte d'accès",
+    subject: "Votre porte d'accès BIS 2027 · {{gate}}",
+    eyebrow: "BIS 2027 · Porte d'accès",
     content: {
-      eyebrow: "BIS 2026 · Porte d'accès",
+      eyebrow: "BIS 2027 · Porte d'accès",
       heading: "Votre porte d'accès est confirmée.",
       paragraphs: [
         "Bonjour {{firstName}}, pour fluidifier l'accueil, votre porte d'entrée est confirmée."
@@ -213,11 +213,11 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     category: "reminder",
     label: "Rappel J-1",
     description: "Envoyé la veille pour préparer l'arrivée.",
-    subject: "Rendez-vous demain au BIS 2026",
-    eyebrow: "BIS 2026 · Rappel J-1",
+    subject: "Rendez-vous demain au BIS 2027",
+    eyebrow: "BIS 2027 · Rappel J-1",
     content: {
-      eyebrow: "BIS 2026 · Rappel J-1",
-      heading: "À demain au BIS 2026.",
+      eyebrow: "BIS 2027 · Rappel J-1",
+      heading: "À demain au BIS 2027.",
       paragraphs: [
         "Bonjour {{firstName}}, nous avons hâte de vous accueillir demain au {{eventVenue}}.",
         "Préparez votre code ticket avant votre arrivée — il vous sera demandé à l'entrée."
@@ -240,12 +240,12 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Rappel J-0",
     description: "Envoyé le matin même — clair et opérationnel.",
     subject: "Bon sommet — Votre code d'entrée",
-    eyebrow: "BIS 2026 · Jour J",
+    eyebrow: "BIS 2027 · Jour J",
     content: {
-      eyebrow: "BIS 2026 · Jour J",
+      eyebrow: "BIS 2027 · Jour J",
       heading: "Le BIS commence aujourd'hui.",
       paragraphs: [
-        "Bonjour {{firstName}}, bienvenue au jour J du BIS 2026. Rendez-vous au {{eventVenue}} dès 09h00."
+        "Bonjour {{firstName}}, bienvenue au jour J du BIS 2027. Rendez-vous au {{eventVenue}} dès 09h00."
       ],
       ticketBlock: {
         ticketCode: "{{ticketCode}}",
@@ -262,13 +262,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     category: "post-event",
     label: "Merci post-événement",
     description: "Remerciement + lien vers les replays.",
-    subject: "Merci d'avoir été des nôtres au BIS 2026",
-    eyebrow: "BIS 2026 · Merci",
+    subject: "Merci d'avoir été des nôtres au BIS 2027",
+    eyebrow: "BIS 2027 · Merci",
     content: {
-      eyebrow: "BIS 2026 · Merci",
-      heading: "Merci d'avoir participé au BIS 2026.",
+      eyebrow: "BIS 2027 · Merci",
+      heading: "Merci d'avoir participé au BIS 2027.",
       paragraphs: [
-        "Bonjour {{firstName}}, merci d'avoir vécu le BIS 2026 avec nous. Votre présence a rendu cette édition possible.",
+        "Bonjour {{firstName}}, merci d'avoir vécu le BIS 2027 avec nous. Votre présence a rendu cette édition possible.",
         "Les replays et ressources seront disponibles dans les prochaines semaines. Nous vous préviendrons dès leur mise en ligne."
       ],
       cta: { label: "Découvrir l'Impact Studio", url: `${SITE}` }
@@ -279,13 +279,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     category: "post-event",
     label: "Confirmation d'annulation",
     description: "Confirmation d'annulation d'inscription.",
-    subject: "Votre inscription BIS 2026 a été annulée",
-    eyebrow: "BIS 2026 · Annulation",
+    subject: "Votre inscription BIS 2027 a été annulée",
+    eyebrow: "BIS 2027 · Annulation",
     content: {
-      eyebrow: "BIS 2026 · Annulation",
+      eyebrow: "BIS 2027 · Annulation",
       heading: "Votre inscription a été annulée.",
       paragraphs: [
-        "Bonjour {{firstName}}, nous confirmons l'annulation de votre inscription au BIS 2026."
+        "Bonjour {{firstName}}, nous confirmons l'annulation de votre inscription au BIS 2027."
       ],
       infoCard: {
         rows: [
@@ -302,10 +302,10 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     category: "onboarding",
     label: "Place attribuée (liste d'attente)",
     description: "Attribution d'une place depuis la liste d'attente.",
-    subject: "Bonne nouvelle · Votre place BIS 2026 est confirmée",
-    eyebrow: "BIS 2026 · Liste d'attente",
+    subject: "Bonne nouvelle · Votre place BIS 2027 est confirmée",
+    eyebrow: "BIS 2027 · Liste d'attente",
     content: {
-      eyebrow: "BIS 2026 · Liste d'attente",
+      eyebrow: "BIS 2027 · Liste d'attente",
       heading: "Une place vient de se libérer.",
       paragraphs: [
         "Bonjour {{firstName}}, une place s'est libérée et nous vous l'attribuons.",
@@ -330,13 +330,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Inscription visiteur reçue",
     description:
       "Confirmation d'inscription pour un visiteur individuel.",
-    subject: "Votre inscription au BIS 2026 est enregistrée, {{firstName}}",
-    eyebrow: "BIS 2026 · Inscription",
+    subject: "Votre inscription au BIS 2027 est enregistrée, {{firstName}}",
+    eyebrow: "BIS 2027 · Inscription",
     content: {
-      eyebrow: "BIS 2026 · Inscription",
-      heading: "Bienvenue au BIS 2026, {{firstName}}.",
+      eyebrow: "BIS 2027 · Inscription",
+      heading: "Bienvenue au BIS 2027, {{firstName}}.",
       paragraphs: [
-        "Merci pour votre inscription au Algeria Brand Impact Summit 2026. Votre profil est bien enregistré.",
+        "Merci pour votre inscription au Algeria Brand Impact Summit 2027. Votre profil est bien enregistré.",
         "Vous recevrez un email dédié dès que votre pass digital sera prêt, ainsi que votre porte d'accès."
       ],
       infoCard: {
@@ -358,13 +358,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Inscription entreprise reçue",
     description:
       "Confirmation d'inscription pour une entreprise / organisation.",
-    subject: "Inscription entreprise enregistrée · BIS 2026",
-    eyebrow: "BIS 2026 · Inscription entreprise",
+    subject: "Inscription entreprise enregistrée · BIS 2027",
+    eyebrow: "BIS 2027 · Inscription entreprise",
     content: {
-      eyebrow: "BIS 2026 · Inscription entreprise",
+      eyebrow: "BIS 2027 · Inscription entreprise",
       heading: "Votre inscription entreprise est reçue.",
       paragraphs: [
-        "Bonjour {{firstName}}, nous avons bien reçu l'inscription de votre organisation au BIS 2026.",
+        "Bonjour {{firstName}}, nous avons bien reçu l'inscription de votre organisation au BIS 2027.",
         "Notre équipe reviendra vers vous rapidement pour préparer votre venue et vos accès."
       ],
       infoCard: {
@@ -388,13 +388,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Candidature sponsor reçue",
     description:
       "Accusé de réception d'une candidature sponsor. Ne promet pas d'acceptation.",
-    subject: "Votre candidature sponsor est reçue · BIS 2026",
-    eyebrow: "BIS 2026 · Candidature sponsor",
+    subject: "Votre candidature sponsor est reçue · BIS 2027",
+    eyebrow: "BIS 2027 · Candidature sponsor",
     content: {
-      eyebrow: "BIS 2026 · Candidature sponsor",
+      eyebrow: "BIS 2027 · Candidature sponsor",
       heading: "Merci pour votre intérêt.",
       paragraphs: [
-        "Bonjour {{firstName}}, nous avons bien reçu la candidature sponsor de votre organisation pour le BIS 2026.",
+        "Bonjour {{firstName}}, nous avons bien reçu la candidature sponsor de votre organisation pour le BIS 2027.",
         "Nos équipes vont étudier votre proposition et reviendront vers vous pour discuter des prochaines étapes."
       ],
       note: "Cette confirmation ne vaut pas engagement. Nous confirmerons formellement toute participation après l'étude de votre dossier."
@@ -406,13 +406,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Candidature partenaire reçue",
     description:
       "Accusé de réception d'une candidature partenaire. Ne promet pas d'acceptation.",
-    subject: "Votre candidature partenaire est reçue · BIS 2026",
-    eyebrow: "BIS 2026 · Candidature partenaire",
+    subject: "Votre candidature partenaire est reçue · BIS 2027",
+    eyebrow: "BIS 2027 · Candidature partenaire",
     content: {
-      eyebrow: "BIS 2026 · Candidature partenaire",
+      eyebrow: "BIS 2027 · Candidature partenaire",
       heading: "Merci pour votre proposition.",
       paragraphs: [
-        "Bonjour {{firstName}}, nous avons bien reçu votre candidature partenaire pour le BIS 2026.",
+        "Bonjour {{firstName}}, nous avons bien reçu votre candidature partenaire pour le BIS 2027.",
         "Notre équipe partenariats examinera votre dossier et reviendra vers vous."
       ],
       note: "Cette confirmation ne vaut pas engagement. Toute collaboration sera validée après échange."
@@ -424,13 +424,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Candidature intervenant reçue",
     description:
       "Accusé de réception d'une candidature intervenant. Sélection ultérieure.",
-    subject: "Votre proposition d'intervention est reçue · BIS 2026",
-    eyebrow: "BIS 2026 · Candidature intervenant",
+    subject: "Votre proposition d'intervention est reçue · BIS 2027",
+    eyebrow: "BIS 2027 · Candidature intervenant",
     content: {
-      eyebrow: "BIS 2026 · Candidature intervenant",
+      eyebrow: "BIS 2027 · Candidature intervenant",
       heading: "Merci pour votre proposition.",
       paragraphs: [
-        "Bonjour {{firstName}}, nous avons bien reçu votre proposition d'intervention pour le BIS 2026.",
+        "Bonjour {{firstName}}, nous avons bien reçu votre proposition d'intervention pour le BIS 2027.",
         "Notre comité éditorial étudiera votre dossier. La sélection des intervenants sera communiquée dans les prochaines semaines."
       ],
       note: "Cette confirmation ne garantit pas la sélection. Nous reviendrons vers vous à l'issue de l'examen éditorial."
@@ -442,13 +442,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Candidature créateur reçue",
     description:
       "Accusé de réception d'une candidature créateur de contenu.",
-    subject: "Votre candidature créateur est reçue · BIS 2026",
-    eyebrow: "BIS 2026 · Candidature créateur",
+    subject: "Votre candidature créateur est reçue · BIS 2027",
+    eyebrow: "BIS 2027 · Candidature créateur",
     content: {
-      eyebrow: "BIS 2026 · Candidature créateur",
+      eyebrow: "BIS 2027 · Candidature créateur",
       heading: "Merci pour votre candidature.",
       paragraphs: [
-        "Bonjour {{firstName}}, nous avons bien reçu votre candidature créateur de contenu pour le BIS 2026.",
+        "Bonjour {{firstName}}, nous avons bien reçu votre candidature créateur de contenu pour le BIS 2027.",
         "Nos équipes examineront votre profil et reviendront vers vous."
       ],
       note: "Cette confirmation n'implique pas d'engagement. Nous confirmerons toute collaboration après échange."
@@ -463,10 +463,10 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Vérification d'adresse email",
     description:
       "Envoyé après création de compte pour confirmer l'adresse email.",
-    subject: "Confirmez votre adresse email · BIS 2026",
-    eyebrow: "BIS 2026 · Sécurité du compte",
+    subject: "Confirmez votre adresse email · BIS 2027",
+    eyebrow: "BIS 2027 · Sécurité du compte",
     content: {
-      eyebrow: "BIS 2026 · Sécurité du compte",
+      eyebrow: "BIS 2027 · Sécurité du compte",
       heading: "Confirmez votre adresse email",
       paragraphs: [
         "Bonjour {{firstName}}, votre compte a bien été créé sur bis-algeria.dz.",
@@ -482,10 +482,10 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Réinitialisation du mot de passe",
     description:
       "Envoyé quand l'utilisateur demande une réinitialisation du mot de passe.",
-    subject: "Réinitialisation de votre mot de passe · BIS 2026",
-    eyebrow: "BIS 2026 · Sécurité du compte",
+    subject: "Réinitialisation de votre mot de passe · BIS 2027",
+    eyebrow: "BIS 2027 · Sécurité du compte",
     content: {
-      eyebrow: "BIS 2026 · Sécurité du compte",
+      eyebrow: "BIS 2027 · Sécurité du compte",
       heading: "Réinitialisez votre mot de passe",
       paragraphs: [
         "Bonjour {{firstName}}, une demande de réinitialisation de mot de passe a été enregistrée pour ce compte.",
@@ -501,16 +501,16 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Mot de passe modifié",
     description:
       "Notification de sécurité envoyée après un changement de mot de passe réussi.",
-    subject: "Votre mot de passe a été modifié · BIS 2026",
-    eyebrow: "BIS 2026 · Alerte sécurité",
+    subject: "Votre mot de passe a été modifié · BIS 2027",
+    eyebrow: "BIS 2027 · Alerte sécurité",
     content: {
-      eyebrow: "BIS 2026 · Alerte sécurité",
+      eyebrow: "BIS 2027 · Alerte sécurité",
       heading: "Votre mot de passe vient d'être modifié",
       paragraphs: [
-        "Bonjour {{firstName}}, nous vous confirmons que le mot de passe associé à votre compte BIS 2026 a été modifié.",
+        "Bonjour {{firstName}}, nous vous confirmons que le mot de passe associé à votre compte BIS 2027 a été modifié.",
         "Toutes les sessions ouvertes ont été déconnectées. Vous devrez vous reconnecter sur vos autres appareils."
       ],
-      note: "Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement l'équipe BIS 2026."
+      note: "Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement l'équipe BIS 2027."
     }
   },
 
@@ -522,12 +522,12 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Inscription salle gratuite confirmée",
     description: "Confirmation d'inscription à une salle gratuite.",
     subject: "Inscription confirmée · {{roomName}}",
-    eyebrow: "BIS 2026 · Inscription salle",
+    eyebrow: "BIS 2027 · Inscription salle",
     content: {
-      eyebrow: "BIS 2026 · Inscription salle",
+      eyebrow: "BIS 2027 · Inscription salle",
       heading: "Votre inscription à {{roomName}} est confirmée.",
       paragraphs: [
-        "Bonjour {{firstName}}, votre place est réservée pour la salle {{roomName}} lors du BIS 2026.",
+        "Bonjour {{firstName}}, votre place est réservée pour la salle {{roomName}} lors du BIS 2027.",
         "Présentez votre badge digital à l'entrée de la salle le jour J."
       ],
       infoCard: {
@@ -547,9 +547,9 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     description:
       "Notification qu'une inscription à une salle payante attend le paiement.",
     subject: "Paiement en attente · {{roomName}}",
-    eyebrow: "BIS 2026 · Inscription salle",
+    eyebrow: "BIS 2027 · Inscription salle",
     content: {
-      eyebrow: "BIS 2026 · Inscription salle",
+      eyebrow: "BIS 2027 · Inscription salle",
       heading: "Votre inscription attend votre paiement.",
       paragraphs: [
         "Bonjour {{firstName}}, votre demande d'inscription à la salle {{roomName}} est enregistrée.",
@@ -573,9 +573,9 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     description:
       "Confirmation d'inscription après confirmation du paiement (admin).",
     subject: "Paiement confirmé · {{roomName}}",
-    eyebrow: "BIS 2026 · Paiement salle",
+    eyebrow: "BIS 2027 · Paiement salle",
     content: {
-      eyebrow: "BIS 2026 · Paiement salle",
+      eyebrow: "BIS 2027 · Paiement salle",
       heading: "Votre inscription à {{roomName}} est confirmée.",
       paragraphs: [
         "Bonjour {{firstName}}, nous avons bien enregistré le paiement de votre place pour la salle {{roomName}}.",
@@ -597,9 +597,9 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Salle · remboursement effectué",
     description: "Notification de remboursement d'une inscription salle payante.",
     subject: "Remboursement effectué · {{roomName}}",
-    eyebrow: "BIS 2026 · Remboursement",
+    eyebrow: "BIS 2027 · Remboursement",
     content: {
-      eyebrow: "BIS 2026 · Remboursement",
+      eyebrow: "BIS 2027 · Remboursement",
       heading: "Votre paiement a été remboursé.",
       paragraphs: [
         "Bonjour {{firstName}}, votre inscription à la salle {{roomName}} a été remboursée.",
@@ -620,13 +620,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Salle · inscription annulée",
     description: "Notification d'annulation d'une inscription salle.",
     subject: "Inscription annulée · {{roomName}}",
-    eyebrow: "BIS 2026 · Annulation salle",
+    eyebrow: "BIS 2027 · Annulation salle",
     content: {
-      eyebrow: "BIS 2026 · Annulation salle",
+      eyebrow: "BIS 2027 · Annulation salle",
       heading: "Votre inscription à {{roomName}} a été annulée.",
       paragraphs: [
         "Bonjour {{firstName}}, votre inscription à la salle {{roomName}} a été annulée.",
-        "Vous pouvez toujours accéder aux autres espaces du BIS 2026 selon votre pass."
+        "Vous pouvez toujours accéder aux autres espaces du BIS 2027 selon votre pass."
       ]
     }
   },
@@ -639,10 +639,10 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Formulaire de contact · relais",
     description:
       "Relais interne d'une soumission du formulaire de contact vers l'équipe.",
-    subject: "[Contact BIS 2026] {{contactSubject}}",
-    eyebrow: "BIS 2026 · Contact",
+    subject: "[Contact BIS 2027] {{contactSubject}}",
+    eyebrow: "BIS 2027 · Contact",
     content: {
-      eyebrow: "BIS 2026 · Contact",
+      eyebrow: "BIS 2027 · Contact",
       heading: "Nouveau message du formulaire de contact",
       paragraphs: [
         "Un nouveau message a été soumis via le formulaire de contact du site.",
@@ -666,13 +666,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     label: "Email de test SMTP",
     description:
       "Envoyé depuis la page d'administration SMTP pour vérifier l'infrastructure.",
-    subject: "[Test] Configuration email BIS 2026",
-    eyebrow: "BIS 2026 · Diagnostic",
+    subject: "[Test] Configuration email BIS 2027",
+    eyebrow: "BIS 2027 · Diagnostic",
     content: {
-      eyebrow: "BIS 2026 · Diagnostic",
+      eyebrow: "BIS 2027 · Diagnostic",
       heading: "Test d'envoi SMTP réussi.",
       paragraphs: [
-        "Bonjour, ce message a été envoyé par {{adminName}} depuis la console d'administration BIS 2026 pour valider la configuration SMTP.",
+        "Bonjour, ce message a été envoyé par {{adminName}} depuis la console d'administration BIS 2027 pour valider la configuration SMTP.",
         "Émis à : {{issuedAt}}."
       ],
       note: "Ce message est un test technique. Aucune action n'est requise."
@@ -708,7 +708,7 @@ export function composeEmailContent({
   if (!template) {
     // Blank / custom — still get the BIS shell, but no info-card / CTA.
     return {
-      eyebrow: "BIS 2026",
+      eyebrow: "BIS 2027",
       paragraphs
     };
   }

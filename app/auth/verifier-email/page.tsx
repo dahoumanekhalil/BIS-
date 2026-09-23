@@ -2,13 +2,13 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Vérification de l'email",
-  description: "Confirmation de la vérification de votre adresse email BIS 2026."
+  description: "Confirmation de la vérification de votre adresse email BIS 2027."
 };
 
 const MESSAGES: Record<string, { title: string; body: string; tone: "ok" | "warn" | "err" }> = {
   ok: {
     title: "Adresse email confirmée.",
-    body: "Votre compte est vérifié. Vous pouvez continuer votre inscription au BIS 2026.",
+    body: "Votre compte est vérifié. Vous pouvez continuer votre inscription au BIS 2027.",
     tone: "ok"
   },
   expired: {

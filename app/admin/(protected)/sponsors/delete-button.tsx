@@ -93,7 +93,7 @@ export function DeleteSponsorButton({
                 </h2>
                 <p className="mt-1 text-[13px] leading-relaxed text-ink/65">
                   Le sponsor sera retiré définitivement de l&apos;édition
-                  BIS 2026. Son logo local sera également supprimé du serveur.
+                  BIS 2027. Son logo local sera également supprimé du serveur.
                 </p>
               </div>
             </div>

@@ -5,7 +5,7 @@ import { CompteTabs } from "@/components/compte/tabs";
 
 export const metadata = {
   title: "Espace personnel",
-  description: "Votre espace BIS 2026 : badge, accès, inscription et demandes."
+  description: "Votre espace BIS 2027 : badge, accès, inscription et demandes."
 };
 
 // Guards every /compte/* route with the existing AccountUser session and

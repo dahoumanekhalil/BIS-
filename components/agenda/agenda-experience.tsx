@@ -341,7 +341,7 @@ export function AgendaExperience() {
           <div className="flex flex-col items-start justify-between gap-6 py-7 md:flex-row md:items-end md:gap-8">
             <div className="min-w-0 flex-1">
               <p className="text-[9px] font-bold uppercase tracking-[0.28em] text-white/65">
-                GET+ SUMMIT 2026 · CIC ALGER
+                GET+ SUMMIT 2027 · CIC ALGER
               </p>
               <h1 className="mt-2 font-display text-[26px] font-black leading-none tracking-tight text-white">
                 Programme

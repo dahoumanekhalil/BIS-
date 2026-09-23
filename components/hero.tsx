@@ -35,7 +35,7 @@ export function Hero() {
           {/* LEFT — content */}
           <div className="lg:col-span-7">
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/80">
-              BIS · ALGERIA · 15 NOVEMBRE 2026
+              BIS · ALGERIA · 3-5 JANVIER 2027
             </p>
 
             <h1 className="mt-6 font-display text-hero-xl text-balance text-white">
@@ -69,7 +69,7 @@ export function Hero() {
               <li>
                 <span className="chip">
                   <IconCalendar />
-                  15 Novembre 2026
+                  3-5 Janvier 2027
                 </span>
               </li>
               <li>

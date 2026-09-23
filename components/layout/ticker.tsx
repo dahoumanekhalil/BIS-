@@ -3,9 +3,9 @@ const items = [
   "12 000 inscrits",
   "6 intervenants confirmés",
   "Inscriptions ouvertes — places limitées",
-  "GET+ SUMMIT 2026",
+  "GET+ SUMMIT 2027",
   "CIC Alger",
-  "15 Novembre 2026"
+  "3-5 Janvier 2027"
 ];
 
 export function LiveTicker() {

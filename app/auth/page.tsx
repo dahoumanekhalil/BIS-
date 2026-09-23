@@ -4,7 +4,7 @@ import { AuthExperience } from "@/components/auth/auth-experience";
 export const metadata = {
   title: "Connexion",
   description:
-    "Créez votre compte ou connectez-vous pour construire votre parcours BIS 2026."
+    "Créez votre compte ou connectez-vous pour construire votre parcours BIS 2027."
 };
 
 export default async function AuthPage({

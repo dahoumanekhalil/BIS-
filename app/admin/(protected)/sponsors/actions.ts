@@ -128,7 +128,7 @@ export async function createSponsor(
   }
 
   const event = await prisma.event.findFirst({
-    where: { slug: "getplus-summit-2026" }
+    where: { slug: "getplus-summit-2027" }
   });
   if (!event) {
     return { status: "error", message: "Événement introuvable." };

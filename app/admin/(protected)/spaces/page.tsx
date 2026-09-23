@@ -29,7 +29,7 @@ export default async function SpacesPage() {
       <AdminHeader
         user={user}
         title="Espaces"
-        subtitle="Gestion opérationnelle des espaces d'exposition BIS 2026"
+        subtitle="Gestion opérationnelle des espaces d'exposition BIS 2027"
       />
 
       <div className="space-y-6 p-6">

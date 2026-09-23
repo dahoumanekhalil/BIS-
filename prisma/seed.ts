@@ -64,7 +64,7 @@ if (process.env.NODE_ENV === "production") {
 }
 
 async function main() {
-  console.log("Seeding BIS 2026...");
+  console.log("Seeding BIS 2027...");
 
   // CheckIn holds FKs to BadgeCredential and AccessPoint via SetNull, but
   // ParticipantAccess and BadgeCredential cascade from Participant, so their
@@ -86,13 +86,13 @@ async function main() {
 
   const event = await prisma.event.create({
     data: {
-      slug: "getplus-summit-2026",
-      name: "Algeria Brand Impact Summit 2026",
+      slug: "getplus-summit-2027",
+      name: "Algeria Brand Impact Summit 2027",
       tagline: "Le sommet de l'impact africain",
       description:
         "Le sommet stratégique où les marques sont construites comme des actifs financiers, des outils de souveraineté et des vecteurs d'influence. Trois piliers : Identity, Growth, Legacy.",
-      startsAt: new Date("2026-11-15T08:00:00Z"),
-      endsAt: new Date("2026-11-17T18:00:00Z"),
+      startsAt: new Date("2027-11-15T08:00:00Z"),
+      endsAt: new Date("2027-11-17T18:00:00Z"),
       city: "Alger",
       venue: "CIC Alger",
       country: "DZ",
@@ -167,7 +167,7 @@ async function main() {
           organization: s.org,
           country: s.country,
           photoUrl: null,
-          bio: `${s.name} — ${s.title} chez ${s.org}. Profil confirmé pour l'édition 2026 de l'Algeria Brand Impact Summit.`,
+          bio: `${s.name} — ${s.title} chez ${s.org}. Profil confirmé pour l'édition 2027 de l'Algeria Brand Impact Summit.`,
           isHighlighted: i < 6,
           order: i
         }
@@ -182,7 +182,7 @@ async function main() {
       summary: "Ambition globale, contraintes locales — comment structurer une marque qui pèse sans se dénaturer.",
       type: SessionType.TALK,
       category: SessionCategory.LEADERSHIP,
-      startsAt: new Date("2026-11-15T08:00:00Z"),
+      startsAt: new Date("2027-11-15T08:00:00Z"),
       durationMin: 20,
       stage: "Impact Stage",
       spaceIdx: 0,
@@ -195,7 +195,7 @@ async function main() {
       summary: "Panel — de la promesse à l'exécution. Ce que l'IA change concrètement pour les acteurs de l'impact.",
       type: SessionType.PANEL,
       category: SessionCategory.TECHNOLOGY,
-      startsAt: new Date("2026-11-15T09:30:00Z"),
+      startsAt: new Date("2027-11-15T09:30:00Z"),
       durationMin: 45,
       stage: "Impact Stage",
       spaceIdx: 0,
@@ -208,7 +208,7 @@ async function main() {
       summary: "Atelier pratique — cadre d'analyse, cartographie d'acteurs, matrices de décision.",
       type: SessionType.WORKSHOP,
       category: SessionCategory.IMPACT,
-      startsAt: new Date("2026-11-15T11:00:00Z"),
+      startsAt: new Date("2027-11-15T11:00:00Z"),
       durationMin: 90,
       stage: "GET ROOTED",
       spaceIdx: 1,
@@ -221,7 +221,7 @@ async function main() {
       summary: "Mastermind VIP — un cercle restreint, une problématique commune, des décisions actionnables.",
       type: SessionType.MASTERMIND,
       category: SessionCategory.ENTREPRENEURSHIP,
-      startsAt: new Date("2026-11-15T13:30:00Z"),
+      startsAt: new Date("2027-11-15T13:30:00Z"),
       durationMin: 90,
       stage: "GET CONNECTED",
       spaceIdx: 3,
@@ -234,7 +234,7 @@ async function main() {
       summary: "Storytelling et distribution — construire une identité qui traverse les frontières.",
       type: SessionType.MASTERCLASS,
       category: SessionCategory.CULTURE,
-      startsAt: new Date("2026-11-16T10:00:00Z"),
+      startsAt: new Date("2027-11-16T10:00:00Z"),
       durationMin: 90,
       stage: "GET ICONIC",
       spaceIdx: 2,
@@ -247,7 +247,7 @@ async function main() {
       summary: "Fireside — repenser la relation founder/investor à l'échelle africaine.",
       type: SessionType.FIRESIDE,
       category: SessionCategory.INVESTMENT,
-      startsAt: new Date("2026-11-16T14:30:00Z"),
+      startsAt: new Date("2027-11-16T14:30:00Z"),
       durationMin: 45,
       stage: "Impact Stage",
       spaceIdx: 0,
@@ -380,7 +380,7 @@ async function main() {
           ? PaymentStatus.PAID
           : PaymentStatus.PENDING,
       paymentAmount: paid ? [80000, 45000, 10000, 25000, 15000][tiers.indexOf(tier)] : null,
-      paymentRef: paid ? `BIS-2026-${(1000 + i).toString().padStart(6, "0")}` : null,
+      paymentRef: paid ? `BIS-2027-${(1000 + i).toString().padStart(6, "0")}` : null,
       paidAt: paid ? new Date(Date.now() - i * 86400000) : null,
       ticketCode: `BIS26-${(1000 + i).toString().padStart(6, "0")}`,
       status: cancelled

@@ -99,7 +99,7 @@ export const PARTICIPATION_DESCRIPTION: Record<ParticipationChoiceKey, string> =
     VISITOR:
       "Rejoindre le sommet en tant que participant individuel — aucune information supplémentaire requise.",
     SPONSOR:
-      "Associer votre marque à l'écosystème BIS et à l'ambition Algérie 2026.",
+      "Associer votre marque à l'écosystème BIS et à l'ambition Algérie 2027.",
     PARTNER:
       "Institution, université, ONG ou média — construire une collaboration stratégique.",
     SPEAKER:

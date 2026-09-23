@@ -6,7 +6,7 @@ import { InteractiveProgramme } from "@/components/interactive-programme";
 export const metadata = {
   title: "Programme",
   description:
-    "Le programme complet de BIS 2026 — cartographié en quatre lignes, trois jours, plus de soixante arrêts."
+    "Le programme complet de BIS 2027 — cartographié en quatre lignes, trois jours, plus de soixante arrêts."
 };
 
 export const revalidate = 300;
@@ -68,7 +68,7 @@ export default async function ProgrammePage() {
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-lime" />
                 </span>
                 <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/80">
-                  Cartographie · Édition 2026
+                  Cartographie · Édition 2027
                 </p>
               </div>
 
@@ -79,7 +79,7 @@ export default async function ProgrammePage() {
               </h1>
 
               <p className="mt-8 max-w-xl text-[17px] leading-relaxed text-white/70">
-                Quatre lignes, une seule ville. Chaque univers de BIS 2026 devient une
+                Quatre lignes, une seule ville. Chaque univers de BIS 2027 devient une
                 ligne, chaque session un arrêt. Cliquez sur un arrêt, filtrez le
                 réseau, composez votre journée.
               </p>
@@ -119,7 +119,7 @@ export default async function ProgrammePage() {
             <div className="lg:col-span-5">
               <div className="relative rounded-[24px] border border-white/10 bg-white/[0.04] p-8 backdrop-blur">
                 <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-white/60">
-                  Réseau BIS 2026
+                  Réseau BIS 2027
                 </p>
                 <p className="mt-2 font-display text-3xl font-black tracking-tight text-white">
                   4 lignes · 3 jours
@@ -233,7 +233,7 @@ export default async function ProgrammePage() {
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-white/70">
               Réservez votre badge et recevez votre pass digital pour naviguer sur
-              les quatre lignes de BIS 2026, du 15 au 17 novembre.
+              les quatre lignes de BIS 2027, du 15 au 17 novembre.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link href="/inscription" className="btn-lime-lg">

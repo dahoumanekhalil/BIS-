@@ -1,7 +1,7 @@
-# BIS 2026 — Ops platform
+# BIS 2027 — Ops platform
 
 Next.js + Prisma + PostgreSQL application for the Algeria Brand Impact
-Summit 2026 (BIS 2026): public registration, participant accounts, admin
+Summit 2027 (BIS 2027): public registration, participant accounts, admin
 console, badge/QR access control, room registrations, and transactional
 email.
 
@@ -63,7 +63,7 @@ module bypasses the queue.
 
 ## Access control
 
-Full guide: [`docs/BIS-2026-ACCESS-SYSTEM-IMPLEMENTATION.md`](./docs/BIS-2026-ACCESS-SYSTEM-IMPLEMENTATION.md).
+Full guide: [`docs/BIS-2027-ACCESS-SYSTEM-IMPLEMENTATION.md`](./docs/BIS-2027-ACCESS-SYSTEM-IMPLEMENTATION.md).
 
 ## Testing
 

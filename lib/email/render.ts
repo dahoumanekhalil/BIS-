@@ -44,7 +44,7 @@ export type InfoCardRow = { label: string; value: string };
 export type InfoCard = { title?: string; rows: InfoCardRow[] };
 export type EmailCta = { label: string; url: string };
 export type EmailContent = {
-  eyebrow?: string; // e.g. "BIS 2026 · Inscription"
+  eyebrow?: string; // e.g. "BIS 2027 · Inscription"
   heading?: string;
   paragraphs: string[]; // rich rendering with \n → <br>
   infoCard?: InfoCard;
@@ -69,10 +69,10 @@ function renderSignature(): string {
           <tr>
             <td style="border-top:1px solid ${EMAIL_COLORS.line}; padding-top:20px; font-family:${EMAIL_FONT_STACK}; font-size:14px; line-height:1.6; color:${EMAIL_COLORS.inkSoft};">
               Bien cordialement,<br />
-              <span style="font-weight:700; color:${EMAIL_COLORS.ink};">L'équipe BIS 2026</span>
+              <span style="font-weight:700; color:${EMAIL_COLORS.ink};">L'équipe BIS 2027</span>
             </td>
             <td align="right" style="vertical-align:top;">
-              <span style="display:inline-block; padding:6px 10px; background:${EMAIL_COLORS.ink}; color:${EMAIL_COLORS.lime}; font-family:${EMAIL_FONT_STACK}; font-size:10px; font-weight:800; letter-spacing:0.24em; text-transform:uppercase; border-radius:6px;">BIS 2026</span>
+              <span style="display:inline-block; padding:6px 10px; background:${EMAIL_COLORS.ink}; color:${EMAIL_COLORS.lime}; font-family:${EMAIL_FONT_STACK}; font-size:10px; font-weight:800; letter-spacing:0.24em; text-transform:uppercase; border-radius:6px;">BIS 2027</span>
             </td>
           </tr>
         </table>
@@ -125,7 +125,7 @@ function renderFooter(): string {
     <tr>
       <td style="background:${EMAIL_COLORS.ink}; padding:28px 32px; font-family:${EMAIL_FONT_STACK};">
         <div style="font-size:12px; font-weight:800; letter-spacing:0.26em; text-transform:uppercase; color:${EMAIL_COLORS.white};">
-          ${esc(EMAIL_BRAND.eventName)} 2026
+          ${esc(EMAIL_BRAND.eventName)} 2027
         </div>
         <div style="margin-top:8px; font-size:12px; color:${EMAIL_COLORS.frostOnDark}; line-height:1.6;">
           ${esc(EMAIL_BRAND.eventDate)} · ${esc(EMAIL_BRAND.eventVenue)} · ${esc(EMAIL_BRAND.eventCity)}
@@ -133,7 +133,7 @@ function renderFooter(): string {
         ${links ? `<div style="margin-top:18px; font-size:12px;">${links}</div>` : ""}
         <div style="margin-top:22px; height:1px; background:rgba(248,250,249,0.12);"></div>
         <div style="margin-top:14px; font-size:11px; color:${EMAIL_COLORS.frostOnDarkMuted};">
-          © 2026 ${esc(EMAIL_BRAND.legalName)}. Tous droits réservés.
+          © 2027 ${esc(EMAIL_BRAND.legalName)}. Tous droits réservés.
         </div>
       </td>
     </tr>
@@ -213,7 +213,7 @@ function renderTicketBlock(t: NonNullable<EmailContent["ticketBlock"]>): string 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate; background:${EMAIL_COLORS.ink}; border-radius:14px;">
           <tr>
             <td style="padding:26px 26px 22px 26px;">
-              <div style="font-family:${EMAIL_FONT_STACK}; font-size:10px; font-weight:800; letter-spacing:0.24em; text-transform:uppercase; color:${EMAIL_COLORS.lime};">Pass digital BIS 2026</div>
+              <div style="font-family:${EMAIL_FONT_STACK}; font-size:10px; font-weight:800; letter-spacing:0.24em; text-transform:uppercase; color:${EMAIL_COLORS.lime};">Pass digital BIS 2027</div>
               <div style="margin-top:14px; font-family:${EMAIL_FONT_STACK}; font-size:32px; font-weight:900; letter-spacing:0.12em; color:${EMAIL_COLORS.white};">
                 ${esc(t.ticketCode)}
               </div>
@@ -329,7 +329,7 @@ export function renderEmail({
         }
       : undefined
   };
-  const resolvedSubject = resolveVars(subject, vars).trim() || "BIS 2026";
+  const resolvedSubject = resolveVars(subject, vars).trim() || "BIS 2027";
 
   const blocks: string[] = [];
   if (resolved.eyebrow) blocks.push(renderEyebrow(resolved.eyebrow));
@@ -408,7 +408,7 @@ export function renderEmail({
     "",
     "—",
     "Bien cordialement,",
-    "L'équipe BIS 2026",
+    "L'équipe BIS 2027",
     "",
     `${EMAIL_BRAND.eventName} · ${EMAIL_BRAND.eventDate} · ${EMAIL_BRAND.eventVenue}`
   );

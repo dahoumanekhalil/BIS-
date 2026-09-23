@@ -51,8 +51,8 @@ const PRESET_KEYS = new Set([
   "all"
 ]);
 
-const EVENT_START = new Date("2026-11-15T00:00:00Z");
-const EVENT_END = new Date("2026-11-17T23:59:59.999Z");
+const EVENT_START = new Date("2017-01-03T00:00:00Z");
+const EVENT_END = new Date("2017-01-05T23:59:59.999Z");
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

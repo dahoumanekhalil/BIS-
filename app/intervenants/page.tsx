@@ -6,7 +6,7 @@ import type { SpeakerCardData } from "@/components/speakers/speaker-card";
 export const metadata = {
   title: "Intervenants",
   description:
-    "Les intervenants de BIS 2026 — fondateurs, décideurs, chercheurs et créateurs qui façonnent l'avenir de l'impact africain."
+    "Les intervenants de BIS 2027 — fondateurs, décideurs, chercheurs et créateurs qui façonnent l'avenir de l'impact africain."
 };
 
 export const revalidate = 300;
@@ -91,7 +91,7 @@ export default async function SpeakersPage() {
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-lime" />
                 </span>
                 <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/80">
-                  GET+ SUMMIT 2026 · CIC ALGER
+                  GET+ SUMMIT 2027 · CIC ALGER
                 </p>
               </div>
 
@@ -122,7 +122,7 @@ export default async function SpeakersPage() {
             <div className="lg:col-span-4">
               <div className="relative rounded-[24px] border border-white/10 bg-white/[0.04] p-7 backdrop-blur">
                 <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-white/60">
-                  Édition 2026
+                  Édition 2027
                 </p>
                 <p className="mt-2 font-display text-3xl font-black tracking-tight text-white">
                   {speakers.length}+ voix confirmées
@@ -165,7 +165,7 @@ export default async function SpeakersPage() {
               <span className="h-px w-6 bg-ink/40" /> Intervenants
             </p>
             <h2 className="mt-4 font-display text-[clamp(1.75rem,3.2vw,2.75rem)] font-black tracking-tight">
-              Le plateau BIS 2026.
+              Le plateau BIS 2027.
             </h2>
             <p className="mt-3 text-[15px] text-ink/65">
               Chaque intervenant est associé à un ou deux piliers stratégiques.
@@ -196,7 +196,7 @@ export default async function SpeakersPage() {
             <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-white/70">
               Vous pensez qu&apos;une voix manque à ce plateau ? Envoyez-nous
               votre profil ou celui d&apos;une personnalité qui devrait
-              s&apos;exprimer à BIS 2026.
+              s&apos;exprimer à BIS 2027.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link href="/contact" className="btn-lime-lg">

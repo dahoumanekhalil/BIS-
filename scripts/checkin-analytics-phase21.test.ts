@@ -227,20 +227,20 @@ describe("Phase 21 · timezone (Africa/Algiers)", () => {
   });
 
   test("algiersHour projects a Date into 0..23 in Algiers", () => {
-    // 2026-11-15T13:00Z is 14:00 in Africa/Algiers (UTC+1, no DST).
-    const d = new Date("2026-11-15T13:00:00.000Z");
+    // 2027-11-15T13:00Z is 14:00 in Africa/Algiers (UTC+1, no DST).
+    const d = new Date("2027-11-15T13:00:00.000Z");
     assert.equal(algiersHour(d), 14);
     // Midnight UTC on a summer day: 01:00 in Algiers.
-    const midnight = new Date("2026-06-01T00:00:00.000Z");
+    const midnight = new Date("2027-06-01T00:00:00.000Z");
     assert.equal(algiersHour(midnight), 1);
     // Late night UTC crosses to the next Algiers day: 23:30Z → 00:30 next.
-    const nearMidnight = new Date("2026-11-15T23:30:00.000Z");
+    const nearMidnight = new Date("2027-11-15T23:30:00.000Z");
     assert.equal(algiersHour(nearMidnight), 0);
   });
 
   test("algiersHour always returns 0..23", () => {
     for (let h = 0; h < 24; h++) {
-      const d = new Date(`2026-11-15T${h.toString().padStart(2, "0")}:15:00.000Z`);
+      const d = new Date(`2027-11-15T${h.toString().padStart(2, "0")}:15:00.000Z`);
       const got = algiersHour(d);
       assert.ok(got >= 0 && got < 24, `bad hour: ${got}`);
     }

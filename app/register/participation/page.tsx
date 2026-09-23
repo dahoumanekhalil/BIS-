@@ -8,7 +8,7 @@ import { ParticipationSelector } from "./participation-selector";
 
 export const metadata: Metadata = {
   title: "Choisir sa participation",
-  description: "Choisissez comment vous souhaitez participer au BIS 2026."
+  description: "Choisissez comment vous souhaitez participer au BIS 2027."
 };
 
 export const dynamic = "force-dynamic";
@@ -68,13 +68,13 @@ export default async function ParticipationStepPage({
         {/* Hero — copy per spec, same visual language as the header. */}
         <div className="mt-10 max-w-3xl text-white">
           <p className="eyebrow-invert">
-            <span className="h-px w-6 bg-white/40" /> BIS 2026 · Étape 2 sur 4
+            <span className="h-px w-6 bg-white/40" /> BIS 2027 · Étape 2 sur 4
           </p>
           <h1 className="mt-5 font-display text-[clamp(2.25rem,5vw,3.75rem)] font-black leading-[1.05] tracking-[-0.025em] text-white text-balance">
-            Pourquoi souhaitez-vous rejoindre le BIS 2026 ?
+            Pourquoi souhaitez-vous rejoindre le BIS 2027 ?
           </h1>
           <p className="mt-5 max-w-xl text-[15.5px] leading-relaxed text-white/75">
-            Votre compte est prêt. Indiquez-nous ce qui vous amène au BIS 2026
+            Votre compte est prêt. Indiquez-nous ce qui vous amène au BIS 2027
             afin de vous proposer la suite de votre parcours.
           </p>
         </div>

@@ -6,7 +6,7 @@ import { Reveal } from "./reveal";
 
 const FAQS: Array<{ q: string; a: string }> = [
   {
-    q: "Comment participer au BIS 2026 ?",
+    q: "Comment participer au BIS 2027 ?",
     a: "Réservez votre billet depuis la page Inscription. Les places sont attribuées par vagues — les inscriptions tôt bénéficient des tarifs préférentiels."
   },
   {

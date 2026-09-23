@@ -102,7 +102,7 @@ export function VisitorConfirm({ participant }: { participant: Participant }) {
       )}
 
       <p className="text-[13px] text-ink/60">
-        En confirmant, vous finalisez votre inscription au BIS 2026. Vous
+        En confirmant, vous finalisez votre inscription au BIS 2027. Vous
         recevrez un email de récapitulatif si ce n'est pas déjà le cas.
       </p>
 

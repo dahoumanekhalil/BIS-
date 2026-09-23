@@ -69,7 +69,7 @@ export function ContactHero() {
             <Reveal delay={240}>
               <p className="mt-8 max-w-xl text-[17px] leading-relaxed text-white/70">
                 Une question, une collaboration, un partenariat ou l&apos;envie
-                d&apos;échanger avec l&apos;équipe BIS 2026 — écrivez-nous.
+                d&apos;échanger avec l&apos;équipe BIS 2027 — écrivez-nous.
                 Nous répondons sous 48 heures ouvrées.
               </p>
             </Reveal>
@@ -91,7 +91,7 @@ export function ContactHero() {
 
             <Reveal delay={480}>
               <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[11px] uppercase tracking-[0.22em] text-white/50">
-                <span>15 · 17 Nov 2026</span>
+                <span>15 · 17 Nov 2027</span>
                 <span>CIC Alger</span>
                 <span>12 611+ Attendus</span>
               </div>

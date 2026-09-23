@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { EmailStatus, Prisma } from "@prisma/client";
 import { EMAIL_TEMPLATES } from "@/lib/admin/email-templates";
 import { renderEmail, type EmailVars } from "@/lib/email/render";
+import { renderDbTemplate } from "@/lib/email/templates/db-render";
+import { getEmailBranding } from "@/lib/email/templates/branding";
 import { kickWorkerAsync } from "@/lib/email/worker";
 
 /**
@@ -43,11 +45,6 @@ export async function queueTemplatedEmail({
   | { ok: true; id: string; deduped: boolean }
   | { ok: false; reason: string }
 > {
-  const template = EMAIL_TEMPLATES.find((t) => t.key === templateKey);
-  if (!template) {
-    return { ok: false, reason: `Unknown template: ${templateKey}` };
-  }
-
   // Idempotency short-circuit — cheaper than catching P2002 and returning
   // the already-queued row.
   if (idempotencyKey) {
@@ -60,11 +57,32 @@ export async function queueTemplatedEmail({
     }
   }
 
-  const rendered = renderEmail({
-    subject: template.subject,
-    content: template.content,
-    vars
+  // Prefer an active DB template with matching key (admin override), fall
+  // back to the code catalog. A missing key in BOTH is a hard error.
+  const dbOverride = await prisma.emailTemplate.findFirst({
+    where: { key: templateKey, isActive: true }
   });
+  const codeTemplate = EMAIL_TEMPLATES.find((t) => t.key === templateKey);
+  if (!dbOverride && !codeTemplate) {
+    return { ok: false, reason: `Unknown template: ${templateKey}` };
+  }
+
+  const rendered = dbOverride
+    ? renderDbTemplate({
+        subject: dbOverride.subject,
+        preheader: dbOverride.preheader,
+        htmlBody: dbOverride.htmlBody,
+        textBody: dbOverride.textBody,
+        useHeader: dbOverride.useHeader,
+        useFooter: dbOverride.useFooter,
+        branding: await getEmailBranding(),
+        vars
+      })
+    : renderEmail({
+        subject: codeTemplate!.subject,
+        content: codeTemplate!.content,
+        vars
+      });
 
   try {
     const record = await prisma.emailMessage.create({
@@ -76,7 +94,7 @@ export async function queueTemplatedEmail({
         subject: rendered.subject,
         body: rendered.text,
         html: rendered.html,
-        templateKey: template.key,
+        templateKey: templateKey,
         status: EmailStatus.QUEUED,
         idempotencyKey: idempotencyKey ?? null,
         locale: locale ?? "fr",
@@ -105,6 +123,6 @@ export async function queueTemplatedEmail({
 }
 
 export const EVENT_VARS: Pick<EmailVars, "eventDate" | "eventVenue"> = {
-  eventDate: "15 – 17 novembre 2026",
+  eventDate: "3 – 5 janvier 2017",
   eventVenue: "CIC Alger"
 };

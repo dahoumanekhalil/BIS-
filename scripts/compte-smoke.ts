@@ -42,8 +42,8 @@ async function ensureEvent() {
     data: {
       slug: `smoke-event-${Date.now()}`,
       name: "Smoke Event",
-      startsAt: new Date("2026-11-15T08:00:00Z"),
-      endsAt: new Date("2026-11-17T18:00:00Z"),
+      startsAt: new Date("2027-11-15T08:00:00Z"),
+      endsAt: new Date("2027-11-17T18:00:00Z"),
       city: "Alger",
       venue: "CIC",
       country: "DZ"
@@ -87,8 +87,8 @@ const populatedChecks: Check[] = [
       // Physical neck-badge (BadgeCard) — brand + event context.
       /BIS/,
       /Algeria Brand Impact/,
-      /Summit 2026/,
-      /15 Novembre 2026/,
+      /Summit 2027/,
+      /3-5 Janvier 2027/,
       /CIC Alger/,
       // Client-side controls (server-rendered initial markup).
       /Credential digital/,
@@ -100,7 +100,7 @@ const populatedChecks: Check[] = [
   {
     path: "/compte/acces",
     expect: [
-      /Mon accès BIS 2026/i,
+      /Mon accès BIS 2027/i,
       /Entrée principale/,
       /Salle 01/,
       /Salle 02/,
@@ -124,7 +124,7 @@ const populatedChecks: Check[] = [
   },
   {
     path: "/compte/inscription",
-    expect: [/Mon inscription BIS 2026/, /Code billet/, /Réglé/]
+    expect: [/Mon inscription BIS 2027/, /Code billet/, /Réglé/]
   },
   {
     path: "/compte/profil",

@@ -7,8 +7,8 @@ function summitStatus(): {
   tone: "upcoming" | "live" | "ended";
 } {
   const now = Date.now();
-  const start = new Date("2026-11-15T08:00:00Z").getTime();
-  const end = new Date("2026-11-17T20:00:00Z").getTime();
+  const start = new Date("2027-11-15T08:00:00Z").getTime();
+  const end = new Date("2027-11-17T20:00:00Z").getTime();
   if (now < start) return { label: "Upcoming", tone: "upcoming" };
   if (now > end) return { label: "Ended", tone: "ended" };
   return { label: "Live", tone: "live" };
@@ -52,7 +52,7 @@ export function AdminHeader({
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-ink" />
               </span>
             )}
-            {status.label} · BIS 2026
+            {status.label} · BIS 2027
           </span>
 
           <div className="hidden text-right sm:block">

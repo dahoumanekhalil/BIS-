@@ -358,7 +358,7 @@ export function InteractiveProgramme({ days }: { days: Day[] }) {
                       {fmtWeekday(d.date)}
                     </p>
                     <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-ink/50">
-                      {fmtMonth(d.date)} 2026 · {d.items.length} arrêts
+                      {fmtMonth(d.date)} 2027 · {d.items.length} arrêts
                       {filtersActive && ` · ${dayMatchCount} correspondent au filtre`}
                     </p>
                   </div>

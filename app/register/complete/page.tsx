@@ -9,7 +9,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Inscription complétée",
-  description: "Votre inscription au BIS 2026 est enregistrée."
+  description: "Votre inscription au BIS 2027 est enregistrée."
 };
 
 export const dynamic = "force-dynamic";
@@ -41,7 +41,7 @@ export default async function CompletePage({
   const message = isVisitor ? (
     <>
       <p>
-        Bienvenue au BIS 2026. Votre inscription a bien été prise en compte.
+        Bienvenue au BIS 2027. Votre inscription a bien été prise en compte.
       </p>
       <p className="mt-1 text-ink/60">
         Un email de confirmation vous a été envoyé.
@@ -73,7 +73,7 @@ export default async function CompletePage({
           intro={
             isApplication
               ? "Merci pour votre candidature. Voici la suite."
-              : "Merci — votre place au BIS 2026 est prise."
+              : "Merci — votre place au BIS 2027 est prise."
           }
         >
           <FormProgress current={4} />

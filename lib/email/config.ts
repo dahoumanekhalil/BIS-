@@ -111,7 +111,7 @@ const DEFAULT_CONFIG = {
   passwordEnvelope: null as string | null,
   resendApiKeyEnvelope: null as string | null,
   fromEmail: "",
-  fromName: "BIS 2026",
+  fromName: "BIS 2027",
   replyTo: null as string | null,
   connectionTimeoutMs: 15000,
   authTimeoutMs: 15000,

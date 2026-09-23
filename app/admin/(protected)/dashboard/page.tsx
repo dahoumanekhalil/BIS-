@@ -46,7 +46,7 @@ export default async function AdminDashboardPage({
         {/* Primary KPIs */}
         <section>
           <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-ink/50">
-            Summit overview · 15 Novembre 2026 · CIC Alger
+            Summit overview · 3-5 Janvier 2027 · CIC Alger
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <KpiCard

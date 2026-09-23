@@ -79,6 +79,6 @@ export async function sendContactMessage(
   return {
     status: "success",
     message:
-      "Message reçu. L'équipe BIS 2026 reviendra vers vous sous 48 heures ouvrées."
+      "Message reçu. L'équipe BIS 2027 reviendra vers vous sous 48 heures ouvrées."
   };
 }

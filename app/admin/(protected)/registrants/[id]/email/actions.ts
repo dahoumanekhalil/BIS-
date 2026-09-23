@@ -79,7 +79,7 @@ export async function sendEmail(
         ? participant.paymentAmount.toLocaleString("fr-FR")
         : "",
     paymentRef: participant.paymentRef ?? "",
-    eventDate: "15 – 17 novembre 2026",
+    eventDate: "3 – 5 janvier 2017",
     eventVenue: "CIC Alger"
   };
 

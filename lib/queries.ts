@@ -3,7 +3,7 @@ import { cache } from "react";
 
 export const getEvent = cache(async () => {
   return prisma.event.findUnique({
-    where: { slug: "getplus-summit-2026" }
+    where: { slug: "getplus-summit-2027" }
   });
 });
 

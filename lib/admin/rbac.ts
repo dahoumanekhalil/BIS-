@@ -55,6 +55,15 @@ export const PERMISSIONS = [
   //   other roles must be granted via RolePermissionOverride.
   "settings.email.test",
 
+  // ─── Email template management (Email Template Phase) ────────────────
+  // settings.email.templates — permission to create / edit / activate /
+  //   deactivate DB-backed email templates and modify the shared email
+  //   branding config. Distinct from `settings.manage` so a content
+  //   operator can be granted the ability to iterate on wording WITHOUT
+  //   also being granted the ability to rotate the SMTP password or the
+  //   Resend API key.
+  "settings.email.templates",
+
   // ─── Badge / access-control (Phase 3) ────────────────────────────────
   // badge.manage             — issue / revoke / rotate a participant's BadgeCredential.
   // access.view              — read a participant's per-room access matrix.

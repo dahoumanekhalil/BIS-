@@ -5,11 +5,11 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Participer",
   description:
-    "Sponsor, partenaire, intervenant, créateur, entreprise ou visiteur — les six façons de rejoindre l'écosystème BIS 2026."
+    "Sponsor, partenaire, intervenant, créateur, entreprise ou visiteur — les six façons de rejoindre l'écosystème BIS 2027."
 };
 
 /**
- * Marketing / discovery page describing every way to take part in BIS 2026.
+ * Marketing / discovery page describing every way to take part in BIS 2027.
  *
  * IMPORTANT: this page is descriptive only. It is NOT a registration entry
  * point. The single canonical way to register is `/auth?mode=register`.
@@ -27,7 +27,7 @@ const ROLES: Role[] = [
     index: "01",
     title: "Sponsor",
     description:
-      "Associez votre marque à l'écosystème BIS et à l'ambition Algérie 2026. Visibilité premium sur toute la scénographie du sommet, accès direct aux décideurs et intégration dans les moments forts du programme.",
+      "Associez votre marque à l'écosystème BIS et à l'ambition Algérie 2027. Visibilité premium sur toute la scénographie du sommet, accès direct aux décideurs et intégration dans les moments forts du programme.",
     accent: "cobalt"
   },
   {
@@ -55,14 +55,14 @@ const ROLES: Role[] = [
     index: "05",
     title: "Entreprise",
     description:
-      "Représentez votre entreprise au BIS 2026. Rencontrez des partenaires potentiels, découvrez les tendances qui structurent votre secteur et connectez vos équipes à un écosystème régional en pleine accélération.",
+      "Représentez votre entreprise au BIS 2027. Rencontrez des partenaires potentiels, découvrez les tendances qui structurent votre secteur et connectez vos équipes à un écosystème régional en pleine accélération.",
     accent: "cobalt"
   },
   {
     index: "06",
     title: "Visiteur",
     description:
-      "Rejoignez le sommet en tant que participant individuel. Assistez aux conférences, workshops et sessions de networking — un pass unique pour vivre pleinement les journées du BIS 2026.",
+      "Rejoignez le sommet en tant que participant individuel. Assistez aux conférences, workshops et sessions de networking — un pass unique pour vivre pleinement les journées du BIS 2027.",
     accent: "lime"
   }
 ];
@@ -77,7 +77,7 @@ export default function BeAPartPage() {
               <span className="h-px w-6 bg-black/40" /> Participer
             </p>
             <h1 className="mt-6 font-display text-display-xl text-balance">
-              Devenez partie prenante du BIS 2026.
+              Devenez partie prenante du BIS 2027.
             </h1>
             <div className="mt-8 max-w-lg space-y-4 text-lg text-ink/70">
               <p>
@@ -96,7 +96,7 @@ export default function BeAPartPage() {
                 href="/auth?mode=register"
                 className="inline-flex items-center gap-3 rounded-full bg-cobalt px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-20px_rgba(15,25,60,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:ring-offset-2"
               >
-                <span>S&apos;inscrire au BIS 2026</span>
+                <span>S&apos;inscrire au BIS 2027</span>
                 <span aria-hidden>→</span>
               </Link>
             </div>

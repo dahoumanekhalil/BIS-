@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { SpeakerLoginForm } from "./speaker-login-form";
 
 export const metadata = {
-  title: "BIS 2026 · Espace Intervenant"
+  title: "BIS 2027 · Espace Intervenant"
 };
 
 export default async function SpeakerLoginPage() {

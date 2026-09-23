@@ -14,7 +14,7 @@ export function OnboardingConflictScreen() {
       intro={
         <>
           <p>
-            Une inscription au BIS 2026 existe déjà avec cette adresse email.
+            Une inscription au BIS 2027 existe déjà avec cette adresse email.
             Pour votre sécurité, nous ne pouvons pas la rattacher
             automatiquement à votre compte.
           </p>

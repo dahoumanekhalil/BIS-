@@ -15,7 +15,7 @@ export function ContactCTA() {
       <div className="container-page relative py-20 lg:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <p className="eyebrow-invert justify-center">
-            <span className="h-px w-6 bg-white/40" /> BIS 2026
+            <span className="h-px w-6 bg-white/40" /> BIS 2027
           </p>
           <h2 className="mt-6 font-display text-[clamp(2rem,4.8vw,3.75rem)] font-black leading-[0.95] tracking-tight">
             Une idée.
@@ -25,7 +25,7 @@ export function ContactCTA() {
             <span className="text-lime">Un impact.</span>
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-white/70">
-            La conversation commence ici. Rejoignez BIS 2026 pour construire
+            La conversation commence ici. Rejoignez BIS 2027 pour construire
             l&apos;écosystème de l&apos;impact africain.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">

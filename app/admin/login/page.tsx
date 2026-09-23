@@ -3,7 +3,7 @@ import { getCurrentAdmin } from "@/lib/admin/auth";
 import { LoginForm } from "./login-form";
 
 export const metadata = {
-  title: "BIS 2026 · Connexion Admin"
+  title: "BIS 2027 · Connexion Admin"
 };
 
 export default async function AdminLoginPage({
@@ -39,7 +39,7 @@ export default async function AdminLoginPage({
             Espace Administrateur
           </h1>
           <p className="mt-2 text-[13px] leading-relaxed text-white/45">
-            Connectez-vous pour accéder au tableau de bord opérationnel du sommet BIS 2026.
+            Connectez-vous pour accéder au tableau de bord opérationnel du sommet BIS 2027.
           </p>
         </div>
 

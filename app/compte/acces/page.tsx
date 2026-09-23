@@ -79,10 +79,10 @@ export default async function CompteAccesPage() {
 
   return (
     <div className="grid gap-6">
-      <CompteCard eyebrow="Vue d'ensemble" title="Mon accès BIS 2026">
+      <CompteCard eyebrow="Vue d'ensemble" title="Mon accès BIS 2027">
         <p className="mb-6 text-[13px] leading-relaxed text-ink/65">
           L&apos;entrée principale suit les règles de votre inscription
-          BIS 2026. Chaque salle du sommet dispose d&apos;un contrôle
+          BIS 2027. Chaque salle du sommet dispose d&apos;un contrôle
           d&apos;accès indépendant : certaines salles sont en accès
           libre, d&apos;autres nécessitent une réservation payante.
         </p>

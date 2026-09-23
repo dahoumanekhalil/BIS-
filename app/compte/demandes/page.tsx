@@ -24,7 +24,7 @@ export default async function CompteDemandesPage() {
           title="Vous n'avez pas encore soumis de demande"
         >
           <p className="text-[14px] leading-relaxed text-ink/70">
-            BIS 2026 accueille sponsors, partenaires, intervenants et
+            BIS 2027 accueille sponsors, partenaires, intervenants et
             créateurs de contenu. Soumettez une demande pour rejoindre
             l&apos;édition officielle.
           </p>

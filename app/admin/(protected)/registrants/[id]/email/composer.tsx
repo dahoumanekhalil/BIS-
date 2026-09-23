@@ -80,7 +80,7 @@ export function EmailComposer({
           ? participant.paymentAmount.toLocaleString("fr-FR")
           : "",
       paymentRef: participant.paymentRef ?? "",
-      eventDate: "15 – 17 novembre 2026",
+      eventDate: "3 – 5 janvier 2017",
       eventVenue: "CIC Alger"
     }),
     [participant]
@@ -123,7 +123,7 @@ export function EmailComposer({
       template: activeTemplate,
       bodyText: body
     });
-    return renderEmail({ subject: subject || "BIS 2026", content, vars });
+    return renderEmail({ subject: subject || "BIS 2027", content, vars });
   }, [activeTemplate, body, subject, vars]);
 
   useEffect(() => {

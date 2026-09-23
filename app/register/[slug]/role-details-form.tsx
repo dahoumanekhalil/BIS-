@@ -270,7 +270,7 @@ export function RoleDetailsForm({
                   name="proposal"
                   rows={5}
                   defaultValue={values.proposal ?? ""}
-                  placeholder="Comment souhaitez-vous collaborer avec BIS 2026 ?"
+                  placeholder="Comment souhaitez-vous collaborer avec BIS 2027 ?"
                   invalid={!!errs.proposal}
                 />
               </FormField>
@@ -536,7 +536,7 @@ export function RoleDetailsForm({
                 rows={6}
                 required
                 defaultValue={values.proposal ?? ""}
-                placeholder="Comment souhaitez-vous couvrir ou amplifier BIS 2026 ?"
+                placeholder="Comment souhaitez-vous couvrir ou amplifier BIS 2027 ?"
                 invalid={!!errs.proposal}
               />
             </FormField>

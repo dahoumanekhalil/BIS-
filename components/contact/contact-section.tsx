@@ -32,7 +32,7 @@ export function ContactSection({ items }: { items: ContactInfoItem[] }) {
             </Reveal>
             <Reveal delay={200}>
               <p className="mt-4 max-w-md text-[15px] leading-relaxed text-ink/65">
-                L&apos;équipe BIS 2026 est basée à Alger et accompagne chaque
+                L&apos;équipe BIS 2027 est basée à Alger et accompagne chaque
                 demande avec attention. Choisissez le canal qui vous convient
                 — nous privilégions les échanges structurés.
               </p>

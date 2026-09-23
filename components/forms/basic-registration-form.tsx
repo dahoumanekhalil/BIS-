@@ -209,7 +209,7 @@ export function BasicRegistrationForm({
           label={
             <span>
               J'accepte que mes données soient utilisées dans le cadre de mon
-              inscription au BIS 2026.
+              inscription au BIS 2027.
             </span>
           }
           error={errs.consent}

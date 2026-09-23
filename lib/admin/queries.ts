@@ -71,7 +71,7 @@ export async function getAdminOverview() {
       }
     }),
     prisma.session.findMany({
-      where: { startsAt: { gte: new Date("2026-01-01") } },
+      where: { startsAt: { gte: new Date("2027-01-01") } },
       orderBy: { startsAt: "asc" },
       take: 4,
       include: { space: true }

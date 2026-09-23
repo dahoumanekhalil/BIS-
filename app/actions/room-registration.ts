@@ -80,7 +80,7 @@ function friendlyMessage(code: RoomRegistrationErrorCode): string {
   switch (code) {
     case "PARTICIPANT_NOT_FOUND":
     case "PARTICIPANT_CANCELLED":
-      return "Votre inscription BIS 2026 n'est pas éligible à l'inscription en salle.";
+      return "Votre inscription BIS 2027 n'est pas éligible à l'inscription en salle.";
     case "ACCESS_POINT_NOT_FOUND":
     case "NOT_A_ROOM":
     case "ACCESS_POINT_INACTIVE":
@@ -200,7 +200,7 @@ export async function registerForRoom(
       ok: false,
       code: "NO_PARTICIPANT",
       message:
-        "Complétez votre inscription BIS 2026 avant de vous inscrire à une salle."
+        "Complétez votre inscription BIS 2027 avant de vous inscrire à une salle."
     };
   }
   if (participant.status === RegistrationStatus.CANCELLED) {

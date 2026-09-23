@@ -58,7 +58,7 @@ export function Navbar({ account }: { account: NavAccount | null }) {
         <div className="flex items-center gap-10">
           <Link
             href="/"
-            aria-label="Accueil — BIS 2026"
+            aria-label="Accueil — BIS 2027"
             className="inline-flex items-baseline gap-1"
           >
             <span className={cn("font-display text-[22px] font-extrabold leading-none tracking-tight transition-colors", overHero ? "text-white" : "text-ink")}>

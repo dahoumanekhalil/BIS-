@@ -15,7 +15,7 @@ import {
 export const metadata: Metadata = {
   title: "S'inscrire",
   description:
-    "Rejoignez le Algeria Brand Impact Summit 2026 — une inscription, plusieurs façons de participer."
+    "Rejoignez le Algeria Brand Impact Summit 2027 — une inscription, plusieurs façons de participer."
 };
 
 export const dynamic = "force-dynamic";
@@ -54,7 +54,7 @@ export default async function RegisterStep1Page({
       <div className="container-page">
         <FormShell
           eyebrow="S'inscrire · Étape 1 / 4"
-          title="Prenez votre place au BIS 2026."
+          title="Prenez votre place au BIS 2027."
           intro={
             participation ? (
               <>

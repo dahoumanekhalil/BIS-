@@ -41,7 +41,7 @@ export function SpeakerLoginForm() {
       <Submit />
 
       <p className="pt-3 text-center text-[10.5px] text-white/30">
-        Accès réservé aux intervenants du sommet BIS 2026.
+        Accès réservé aux intervenants du sommet BIS 2027.
       </p>
     </form>
   );

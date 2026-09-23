@@ -9,7 +9,7 @@ import { ContactCTA } from "@/components/contact/contact-cta";
 export const metadata = {
   title: "Contact",
   description:
-    "Contactez l'équipe du Algeria Brand Impact Summit 2026 et échangez autour de vos projets, collaborations et opportunités."
+    "Contactez l'équipe du Algeria Brand Impact Summit 2027 et échangez autour de vos projets, collaborations et opportunités."
 };
 
 // Single source of truth for contact information — kept in sync with the
@@ -19,7 +19,7 @@ const contactConfig = {
   venue: "CIC Alger",
   venueLine2: "Centre International de Conférences",
   city: "Alger, Algérie",
-  eventDate: "15 · 17 Novembre 2026",
+  eventDate: "15 · 17 Novembre 2027",
   mapUrl: "https://www.google.com/maps/search/?api=1&query=CIC+Alger"
 } as const;
 

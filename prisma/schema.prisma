@@ -189,7 +189,7 @@ enum RegistrationProfile {
   COMPANY
 }
 
-// The user's chosen way to participate in BIS 2026 — captured at Step 2 of
+// The user's chosen way to participate in BIS 2027 — captured at Step 2 of
 // the unified /register journey. Distinct from `RegistrationType` (which
 // remains ATTENDEE|STARTUP|INVESTOR|MEDIA|PARTNER for existing ops logic).
 // NULL means the user has not yet completed Step 2.
@@ -446,7 +446,7 @@ model PasswordResetToken {
 }
 
 // --------------------------- ACCESS & BADGES ---------------------------
-// Physical venue access model. The BIS 2026 venue has one MAIN_ENTRANCE and
+// Physical venue access model. The BIS 2027 venue has one MAIN_ENTRANCE and
 // five ROOMs; each is a distinct AccessPoint with its own operator team and
 // scanner instance. A participant's per-room permissions live in
 // ParticipantAccess. A participant's QR credential is a BadgeCredential.

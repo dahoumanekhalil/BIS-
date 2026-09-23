@@ -35,7 +35,7 @@ export default async function CompteInscriptionPage() {
           </p>
           <div className="mt-6">
             <Link href="/register" className="btn-lime">
-              M&apos;inscrire à BIS 2026
+              M&apos;inscrire à BIS 2027
             </Link>
           </div>
         </CompteCard>
@@ -45,7 +45,7 @@ export default async function CompteInscriptionPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <CompteCard eyebrow="Statut" title="Mon inscription BIS 2026">
+      <CompteCard eyebrow="Statut" title="Mon inscription BIS 2027">
         <dl>
           <CompteRow
             label="Statut"
