@@ -133,9 +133,18 @@ export async function consumeEmailVerificationToken(
   // sequence. The prior `email-changed` check already ensures the two
   // agree at consumption time, but this second layer keeps the SQL
   // predicate free of user-controlled state.
+  //
+  // The email comparison is CASE-INSENSITIVE (Postgres `mode: "insensitive"`
+  // = ILIKE-style match). Every user-facing entry point lowercases email
+  // via Zod ingress today, but historical/imported/admin-touched rows may
+  // still carry mixed case. Missing a valid claim is fail-safe (the user
+  // just sees their old registration as "not present") but silently
+  // stranding rows leaves the user unable to see their own data. Since
+  // email ownership is already proven by token consumption, matching all
+  // case variants owned by the same person is correct.
   const participantClaim = await prisma.participant.updateMany({
     where: {
-      email: row.emailAtIssue,
+      email: { equals: row.emailAtIssue, mode: "insensitive" },
       accountUserId: null
     },
     data: {

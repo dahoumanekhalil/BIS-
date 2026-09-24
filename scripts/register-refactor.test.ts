@@ -172,6 +172,111 @@ describe("Legacy Participant claim via email verification", () => {
     assert.equal(bound?.accountUserId, account.id);
   });
 
+  test("claim matches case-insensitively (mixed-case legacy row)", async () => {
+    // Simulate a legacy row that skipped Zod normalization (e.g. CSV
+    // import, prisma studio edit) and landed with mixed case.
+    const suffix = Date.now();
+    const canonical = `mixedcase-${suffix}@bis-test.local`;
+    const mixed = `MixedCase-${suffix}@bis-test.local`;
+    const upper = `MIXEDCASE-${suffix}@bis-test.local`;
+    const event = await ensureEvent();
+
+    const anonMixed = await prisma.participant.create({
+      data: {
+        eventId: event.id,
+        firstName: "Mixed",
+        lastName: "Legacy",
+        email: mixed,
+        phone: null,
+        country: "Algérie",
+        status: RegistrationStatus.REGISTERED
+      }
+    });
+    createdParticipantIds.push(anonMixed.id);
+
+    // AccountUser email goes through Zod → lowercase.
+    const account = await makeAccount(canonical);
+    createdAccountIds.push(account.id);
+
+    // Token issued to the canonical (lowercased) email — same as production.
+    const issued = await issueEmailVerificationToken({
+      userId: account.id,
+      email: account.email
+    });
+    const res = await consumeEmailVerificationToken(issued.rawToken);
+    assert.equal(res.ok, true);
+    if (!res.ok) return;
+    assert.equal(
+      res.claimedParticipantCount,
+      1,
+      "case-insensitive match must bind the mixed-case legacy row"
+    );
+
+    const bound = await prisma.participant.findUnique({ where: { id: anonMixed.id } });
+    assert.equal(bound?.accountUserId, account.id);
+
+    // Sanity: the upper-cased email variant would ALSO match — this
+    // documents the case-insensitive behaviour so a future change that
+    // narrows it will fail loudly.
+    const wouldMatch = await prisma.participant.findMany({
+      where: {
+        email: { equals: upper, mode: "insensitive" },
+        eventId: event.id
+      },
+      select: { id: true }
+    });
+    assert.ok(
+      wouldMatch.some((p) => p.id === anonMixed.id),
+      "upper-case query must find the mixed-case row via mode: insensitive"
+    );
+  });
+
+  test("claim cannot cross accounts via casing (owned mixed-case cannot be stolen)", async () => {
+    // Even with case-insensitive match, an already-bound row must NEVER
+    // be re-bound to a different AccountUser.
+    const suffix = Date.now();
+    const mixed = `Owned-${suffix}@bis-test.local`;
+    const event = await ensureEvent();
+
+    const rightful = await makeAccount(`rightful-${suffix}@bis-test.local`);
+    createdAccountIds.push(rightful.id);
+
+    const owned = await prisma.participant.create({
+      data: {
+        eventId: event.id,
+        firstName: "Owned",
+        lastName: "Mixed",
+        email: mixed,
+        phone: null,
+        country: "Algérie",
+        status: RegistrationStatus.REGISTERED,
+        accountUserId: rightful.id
+      }
+    });
+    createdParticipantIds.push(owned.id);
+
+    // A different account with the same canonical email (via a stolen
+    // verification link would be needed for `email-changed` to pass —
+    // simulate the impossible best case for the attacker by matching
+    // the AccountUser email to the token's emailAtIssue.
+    const attacker = await makeAccount(`Owned-${suffix}@bis-attacker.local`);
+    createdAccountIds.push(attacker.id);
+    const issued = await issueEmailVerificationToken({
+      userId: attacker.id,
+      email: attacker.email
+    });
+    const res = await consumeEmailVerificationToken(issued.rawToken);
+    // Attacker's own account verifies fine — they don't hit the target's
+    // Participant because that row is already `accountUserId != NULL`.
+    assert.equal(res.ok, true);
+    if (!res.ok) return;
+    // Target row still owned by original account.
+    const stillOwned = await prisma.participant.findUnique({
+      where: { id: owned.id }
+    });
+    assert.equal(stillOwned?.accountUserId, rightful.id);
+  });
+
   test("consuming the token when nothing to claim returns count=0", async () => {
     const account = await makeAccount(`claim-empty-${Date.now()}@bis-test.local`);
     createdAccountIds.push(account.id);

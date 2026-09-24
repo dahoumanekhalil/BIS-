@@ -46,6 +46,7 @@
     "test:email-provider": "node --conditions=react-server --import tsx --test scripts/email-provider.test.ts",
     "test:email-template-service": "node --conditions=react-server --import tsx --test scripts/email-template-service.test.ts",
     "test:register-refactor": "node --conditions=react-server --import tsx --test scripts/register-refactor.test.ts",
+    "test:safe-next": "node --conditions=react-server --import tsx --test scripts/safe-next.test.ts",
     "email:reset-stale": "tsx scripts/reset-stale-queued-emails.ts",
     "db:migrate-pending-to-registered": "tsx scripts/migrate-pending-to-registered.ts",
     "db:rollback-registered-to-pending": "tsx scripts/rollback-registered-to-pending.ts",

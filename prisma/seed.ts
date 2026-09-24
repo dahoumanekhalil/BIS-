@@ -383,11 +383,14 @@ async function main() {
       paymentRef: paid ? `BIS-2027-${(1000 + i).toString().padStart(6, "0")}` : null,
       paidAt: paid ? new Date(Date.now() - i * 86400000) : null,
       ticketCode: `BIS26-${(1000 + i).toString().padStart(6, "0")}`,
+      // New rows use REGISTERED (Commit 1 of the registration refactor).
+      // Legacy PENDING is retained on the enum for backward compatibility
+      // but no code path — seed included — writes it going forward.
       status: cancelled
         ? ("CANCELLED" as const)
         : paid
           ? ("CONFIRMED" as const)
-          : ("PENDING" as const),
+          : ("REGISTERED" as const),
       // A couple of demo check-ins so the operational dashboard has signal
       checkedIn: i < 3 && paid
     };
