@@ -4,7 +4,7 @@ import { getCompteContext } from "@/lib/account/participant";
 import { CompteCard } from "@/components/compte/card";
 import { BadgeQrClient } from "@/components/compte/badge-qr-client";
 import { ensureCheckinCode } from "@/lib/badge/checkin-code";
-import { PaymentStatus, RegistrationStatus } from "@prisma/client";
+import { RegistrationStatus } from "@prisma/client";
 
 export const metadata = { title: "Mon badge" };
 
@@ -17,7 +17,9 @@ export const metadata = { title: "Mon badge" };
 // depth):
 //   • participant must exist for this AccountUser
 //   • participant.status must not be CANCELLED
-//   • participant.paymentStatus must be PAID
+//
+// Payment is NOT a prerequisite for badge issuance — see
+// docs/registration-architecture.md §Badge / QR.
 export default async function CompteBadgePage() {
   const account = await requireAccount();
   const { participant } = await getCompteContext(account);
@@ -40,25 +42,19 @@ export default async function CompteBadgePage() {
   }
 
   const badge = participant.credentials[0] ?? null;
-  const eligible =
-    participant.status !== RegistrationStatus.CANCELLED &&
-    participant.paymentStatus === PaymentStatus.PAID;
 
-  if (!eligible) {
-    // No credential surface for ineligible participants. Show a small
-    // read-only card explaining why. The button that would generate the QR
-    // is deliberately absent — the server action would also refuse, but
-    // we hide the trigger too so no click ever fires against the server.
+  if (participant.status === RegistrationStatus.CANCELLED) {
+    // Cancelled registrations are the only reason to refuse badge issuance.
+    // The server action mirrors this refusal for defence in depth.
     return (
       <div className="mx-auto max-w-2xl print-hide">
         <CompteCard
-          eyebrow="Badge en attente"
-          title="Votre badge sera disponible après confirmation"
+          eyebrow="Badge indisponible"
+          title="Votre inscription a été annulée"
         >
           <p className="text-[14px] leading-relaxed text-ink/70">
-            {participant.status === RegistrationStatus.CANCELLED
-              ? "Votre inscription est annulée. Contactez l'équipe BIS pour toute question."
-              : "Votre badge sera généré dès que votre paiement sera enregistré. Vous recevrez une notification email."}
+            Contactez l&apos;équipe BIS si vous pensez qu&apos;il s&apos;agit
+            d&apos;une erreur.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/compte/inscription" className="btn-ghost">

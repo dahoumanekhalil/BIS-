@@ -5,7 +5,9 @@ import { useTransition, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const TIERS = ["ALL", "VVIP", "VIP", "CONTENT_CREATOR", "IMPACT_MAKER"];
-const STATUSES = ["ALL", "PENDING", "CONFIRMED", "CANCELLED"];
+// PENDING kept for legacy rows that predate the RegistrationStatus refactor;
+// new rows land in REGISTERED.
+const STATUSES = ["ALL", "REGISTERED", "CONFIRMED", "CANCELLED", "PENDING"];
 const PAYMENTS = ["ALL", "UNPAID", "PENDING", "PAID", "REFUNDED", "FAILED"];
 const GATES = ["ALL", "Gate A", "Gate B", "Gate C", "Gate D"];
 

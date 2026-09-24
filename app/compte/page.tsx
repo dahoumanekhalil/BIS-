@@ -210,6 +210,28 @@ export default async function ComptePage() {
           </CompteCard>
         )}
 
+        {/* Opportunities — Commit 1 exposes only the Speaker path; the other
+             roles arrive in Commit 2 and are intentionally omitted rather
+             than shown as "coming soon" here to avoid fake buttons. */}
+        {!applications.some((a) => a.type === "SPEAKER") && (
+          <CompteCard
+            eyebrow="Opportunités"
+            title="Postuler comme intervenant"
+          >
+            <p className="text-[13px] leading-relaxed text-ink/70">
+              Proposez une intervention, un keynote ou une masterclass au
+              comité éditorial BIS. Votre inscription existante reste valide —
+              une seule candidature par rôle.
+            </p>
+            <div className="mt-5">
+              <Link href="/register/speaker" className="btn-lime w-full justify-center">
+                Postuler comme intervenant
+                <span aria-hidden>→</span>
+              </Link>
+            </div>
+          </CompteCard>
+        )}
+
         <CompteCard eyebrow="L'événement" title="BIS 2027">
           <dl>
             <CompteRow label="Date" value={eventInfo.date} />

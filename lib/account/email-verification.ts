@@ -52,7 +52,15 @@ export async function issueEmailVerificationToken({
 }
 
 export type ConsumeResult =
-  | { ok: true; userId: string; emailAtIssue: string }
+  | {
+      ok: true;
+      userId: string;
+      emailAtIssue: string;
+      // Number of legacy anonymous Participants that were atomically
+      // bound to this AccountUser as part of consuming the token. Always
+      // 0 or 1 today (one Participant per (eventId, email) uniqueness).
+      claimedParticipantCount: number;
+    }
   | {
       ok: false;
       reason:
@@ -112,7 +120,35 @@ export async function consumeEmailVerificationToken(
     data: { emailVerifiedAt: now }
   });
 
-  return { ok: true, userId: user.id, emailAtIssue: row.emailAtIssue };
+  // ─── Legacy anonymous Participant claim ────────────────────────────────
+  // If a Participant row exists with the same email and no accountUserId,
+  // bind it to this AccountUser NOW that email ownership is proven.
+  //
+  // Race-safe: the `updateMany` predicate WHERE accountUserId IS NULL means
+  // a concurrent claim (either from another verification attempt or another
+  // signup) that already won leaves us with count=0 and we do nothing.
+  //
+  // Deliberately matches on the email the token was ISSUED to, not the
+  // current AccountUser.email — protecting against a "change email → claim"
+  // sequence. The prior `email-changed` check already ensures the two
+  // agree at consumption time, but this second layer keeps the SQL
+  // predicate free of user-controlled state.
+  const participantClaim = await prisma.participant.updateMany({
+    where: {
+      email: row.emailAtIssue,
+      accountUserId: null
+    },
+    data: {
+      accountUserId: user.id
+    }
+  });
+
+  return {
+    ok: true,
+    userId: user.id,
+    emailAtIssue: row.emailAtIssue,
+    claimedParticipantCount: participantClaim.count
+  };
 }
 
 /**

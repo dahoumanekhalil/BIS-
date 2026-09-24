@@ -20,7 +20,10 @@ export const PARTICIPATION_LABEL: Record<ParticipationChoice, string> = {
 };
 
 export const REGISTRATION_STATUS_LABEL: Record<RegistrationStatus, string> = {
-  PENDING: "En attente",
+  // PENDING is deprecated — retained here so legacy rows still render a
+  // human-readable label. New participants land in REGISTERED.
+  PENDING: "Inscription reçue",
+  REGISTERED: "Inscription enregistrée",
   CONFIRMED: "Inscription confirmée",
   CANCELLED: "Annulée"
 };
@@ -45,6 +48,7 @@ export const BADGE_STATUS_TONE: Record<BadgeStatus, StatusTone> = {
 
 export const REGISTRATION_STATUS_TONE: Record<RegistrationStatus, StatusTone> = {
   CONFIRMED: "ok",
+  REGISTERED: "ok",
   PENDING: "wait",
   CANCELLED: "danger"
 };

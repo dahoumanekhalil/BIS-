@@ -76,7 +76,23 @@ export async function GET(req: Request) {
     action: "auth.verify-email.ok",
     entity: "AccountUser",
     entityId: result.userId,
-    meta: {}
+    meta: { claimedParticipantCount: result.claimedParticipantCount }
   }).catch(() => undefined);
+
+  // Distinct audit row when the verification actually bound a legacy
+  // anonymous Participant to the AccountUser — supports post-incident
+  // review of ownership transfers.
+  if (result.claimedParticipantCount > 0) {
+    await audit({
+      userId: null,
+      action: "participant.claim",
+      entity: "AccountUser",
+      entityId: result.userId,
+      meta: {
+        count: result.claimedParticipantCount,
+        via: "email-verification"
+      }
+    }).catch(() => undefined);
+  }
   return safeRedirect("/auth/verifier-email", "ok");
 }

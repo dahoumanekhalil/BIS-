@@ -1,133 +1,74 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BasicRegistrationForm } from "@/components/forms/basic-registration-form";
-import { FormShell } from "@/components/forms/form-shell";
-import { FormProgress } from "@/components/forms/form-progress";
-import { getOnboardingStatus } from "@/lib/onboarding";
-import { OnboardingConflictScreen } from "@/components/forms/onboarding-conflict-screen";
-import {
-  participationFromSlug,
-  PARTICIPATION_LABEL,
-  PARTICIPATION_SLUG
-} from "@/lib/applications";
+import { getCurrentAccount } from "@/lib/account/auth";
+import { participationFromSlug } from "@/lib/applications";
+import { RoleSelector } from "@/components/register/role-selector";
+
+// Role selector — the single public entry point for BIS 2027 registration.
+// Every role flow branches from here. This page never creates a Participant
+// or an AccountUser directly; those are the responsibility of the per-role
+// flows and (for account creation) `/auth?mode=register`.
+//
+// Backward compat: an inbound `?participation=<slug>` shortcut still works
+// so external "Be a Part" landing pages can deep-link straight into a role
+// flow. Only known slugs are honoured; anything else falls through to the
+// selector.
 
 export const metadata: Metadata = {
   title: "S'inscrire",
   description:
-    "Rejoignez le Algeria Brand Impact Summit 2027 — une inscription, plusieurs façons de participer."
+    "Rejoignez le Algeria Brand Impact Summit 2027 — choisissez votre façon de participer."
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function RegisterStep1Page({
+export default async function RegisterRoleSelectorPage({
   searchParams
 }: {
   searchParams: Promise<{ participation?: string }>;
 }) {
   const sp = await searchParams;
-  const participation = participationFromSlug(sp.participation);
+  const preselect = participationFromSlug(sp.participation);
 
-  // If a wizard session is already open OR the user is authenticated via
-  // AccountUser, skip Step 1 and go straight to participation selection.
-  // This is what makes the "S'inscrire via /auth → /register/participation"
-  // flow work: /register itself is inert for logged-in users.
-  const status = await getOnboardingStatus();
-  if (status.kind === "wizard" || status.kind === "linked") {
-    if (participation) {
-      redirect(`/register/${PARTICIPATION_SLUG[participation]}`);
-    }
-    redirect("/register/participation");
-  }
-  if (status.kind === "conflict") {
-    return (
-      <section className="relative overflow-hidden bg-white py-16 lg:py-24">
-        <div className="container-page">
-          <OnboardingConflictScreen />
-        </div>
-      </section>
-    );
-  }
+  // If the URL preselects an already-implemented role, jump straight there.
+  // The role page handles authentication, so we can safely delegate.
+  if (preselect === "VISITOR") redirect("/register/visitor");
+  if (preselect === "SPEAKER") redirect("/register/speaker");
+
+  const account = await getCurrentAccount();
 
   return (
     <section className="relative overflow-hidden bg-white py-16 lg:py-24">
       <div className="container-page">
-        <FormShell
-          eyebrow="S'inscrire · Étape 1 / 4"
-          title="Prenez votre place au BIS 2027."
-          intro={
-            participation ? (
-              <>
-                <p>
-                  Vous souhaitez participer en tant que{" "}
-                  <strong>
-                    {PARTICIPATION_LABEL[participation].toLowerCase()}
-                  </strong>
-                  .
-                </p>
-                <p className="mt-2 text-[15px] text-ink/60">
-                  Commencez par renseigner vos informations d'inscription. Le
-                  détail de votre candidature suivra.
-                </p>
-              </>
-            ) : (
-              <>
-                <p>
-                  Cela prend moins de 2 minutes. Vous choisirez ensuite votre
-                  façon de participer.
-                </p>
-                <p className="mt-4 text-[15px] text-ink/60">
-                  Vous représentez une organisation ? Cochez la case au bas du
-                  formulaire pour ajouter ses informations.
-                </p>
-              </>
-            )
-          }
-          steps={[
-            {
-              n: "01",
-              title: "Vos informations",
-              body: "Contact et profil professionnel."
-            },
-            {
-              n: "02",
-              title: "Votre participation",
-              body: "Visiteur, sponsor, partenaire, intervenant ou créateur."
-            },
-            {
-              n: "03",
-              title: "Vos détails",
-              body: "Uniquement pour les rôles professionnels."
-            },
-            {
-              n: "04",
-              title: "Confirmation",
-              body: "Un récapitulatif et un email de confirmation."
-            }
-          ]}
-          aside={
-            <div className="mt-8 border-t border-black/[0.08] pt-6 text-[13px] text-ink/60">
-              <p>
-                Envie de comprendre les rôles professionnels avant de
-                commencer ?{" "}
-                <Link
-                  href="/be-a-part"
-                  className="font-semibold text-cobalt underline-offset-4 hover:underline"
-                >
-                  Découvrir les façons de participer
-                </Link>
-                .
-              </p>
-            </div>
-          }
-        >
-          <FormProgress current={1} />
-          <BasicRegistrationForm
-            participation={
-              participation ? PARTICIPATION_SLUG[participation] : null
-            }
-          />
-        </FormShell>
+        <header className="mx-auto max-w-3xl text-center">
+          <p className="eyebrow justify-center">
+            <span className="h-px w-6 bg-ink/40" /> Rejoindre BIS 2027
+          </p>
+          <h1 className="mt-4 font-display text-[clamp(2rem,3.6vw,3rem)] font-black leading-tight tracking-tight">
+            Comment souhaitez-vous <span className="text-cobalt">participer</span> ?
+          </h1>
+          <p className="mt-5 text-[15px] leading-relaxed text-ink/70">
+            Choisissez votre façon de participer. Chaque parcours crée ou réutilise
+            votre compte BIS, votre inscription à l&apos;événement et votre badge
+            digital.
+          </p>
+        </header>
+
+        <div className="mx-auto mt-12 max-w-6xl">
+          <RoleSelector isAuthenticated={account !== null} />
+        </div>
+
+        <p className="mx-auto mt-12 max-w-2xl text-center text-[13px] text-ink/55">
+          Déjà inscrit(e) ?{" "}
+          <Link
+            href="/auth?mode=login"
+            className="font-semibold text-cobalt underline-offset-4 hover:underline"
+          >
+            Se connecter
+          </Link>{" "}
+          pour retrouver votre badge et vos candidatures.
+        </p>
       </div>
     </section>
   );

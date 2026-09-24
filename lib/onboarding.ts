@@ -165,7 +165,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
         phone: null,
         country: "Algérie",
         registrationType: "ATTENDEE",
-        status: "PENDING",
+        status: "REGISTERED",
         profile: "VISITOR"
       }
     });

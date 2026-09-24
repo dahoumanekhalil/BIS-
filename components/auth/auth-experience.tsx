@@ -10,7 +10,16 @@ import { accountLoginSchema, accountRegisterSchema } from "@/lib/validations";
 
 type Mode = "login" | "register";
 
-export function AuthExperience({ initialMode }: { initialMode: Mode }) {
+// The `next` prop is a same-origin path validated server-side in
+// app/auth/page.tsx::safeNext. Never accept a client-supplied `next`
+// value blindly — the whitelist there is the security boundary.
+export function AuthExperience({
+  initialMode,
+  next
+}: {
+  initialMode: Mode;
+  next: string | null;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -19,9 +28,9 @@ export function AuthExperience({ initialMode }: { initialMode: Mode }) {
   useEffect(() => {
     const current = params.get("mode");
     if (current !== mode) {
-      const next = new URLSearchParams(params.toString());
-      next.set("mode", mode);
-      router.replace(`/auth?${next.toString()}`, { scroll: false });
+      const nextParams = new URLSearchParams(params.toString());
+      nextParams.set("mode", mode);
+      router.replace(`/auth?${nextParams.toString()}`, { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -64,12 +73,12 @@ export function AuthExperience({ initialMode }: { initialMode: Mode }) {
 
         {/* MOBILE — stacked tabs */}
         <div className="w-full max-w-md md:hidden">
-          <MobileAuth mode={mode} onModeChange={setMode} />
+          <MobileAuth mode={mode} onModeChange={setMode} next={next} />
         </div>
 
         {/* DESKTOP — sliding brand panel */}
         <div className="hidden w-full md:block">
-          <DesktopAuth mode={mode} onModeChange={setMode} />
+          <DesktopAuth mode={mode} onModeChange={setMode} next={next} />
         </div>
 
         <p className="mt-8 text-center text-[11px] uppercase tracking-[0.22em] text-ink/40">
@@ -85,9 +94,11 @@ export function AuthExperience({ initialMode }: { initialMode: Mode }) {
 function DesktopAuth({
   mode,
   onModeChange,
+  next,
 }: {
   mode: Mode;
   onModeChange: (m: Mode) => void;
+  next: string | null;
 }) {
   const isRegister = mode === "register";
 
@@ -131,7 +142,7 @@ function DesktopAuth({
             title="Créer un compte"
             subtitle="Rejoignez la communauté BIS 2027."
           >
-            <RegisterForm />
+            <RegisterForm next={next} />
           </FormShell>
         </div>
 
@@ -142,7 +153,7 @@ function DesktopAuth({
             title="Se connecter"
             subtitle="Reprenez votre parcours BIS."
           >
-            <LoginForm />
+            <LoginForm next={next} />
           </FormShell>
         </div>
       </div>
@@ -430,7 +441,7 @@ function FormShell({
 
 /* --------------------------- LOGIN FORM --------------------------- */
 
-function LoginForm() {
+function LoginForm({ next }: { next: string | null }) {
   const router = useRouter();
   const [values, setValues] = useState({ email: "", password: "" });
   const [remember, setRemember] = useState(false);
@@ -467,7 +478,7 @@ function LoginForm() {
     }
     setStatus("success");
     setMessage("Connexion réussie — redirection…");
-    router.replace("/compte");
+    router.replace(next ?? "/compte");
     router.refresh();
   }
 
@@ -531,7 +542,7 @@ function LoginForm() {
 
 /* --------------------------- REGISTER FORM --------------------------- */
 
-function RegisterForm() {
+function RegisterForm({ next }: { next: string | null }) {
   const router = useRouter();
   const [values, setValues] = useState({
     firstName: "",
@@ -574,10 +585,10 @@ function RegisterForm() {
     }
     setStatus("success");
     setMessage("Compte créé — comment souhaitez-vous participer ?");
-    // Account creation is NOT the end of the BIS registration journey. Send
-    // the newly-authenticated user into the participation-selection step so
-    // they can choose Visitor / Sponsor / Partner / Speaker / Content Creator.
-    router.replace("/register/participation");
+    // Account creation is NOT the end of the BIS registration journey.
+    // If we were sent here from a role page (via `?next=/register/<role>`),
+    // return there directly; otherwise land on the role selector.
+    router.replace(next ?? "/register");
     router.refresh();
   }
 
@@ -858,9 +869,11 @@ function LinkedInIcon() {
 function MobileAuth({
   mode,
   onModeChange,
+  next,
 }: {
   mode: Mode;
   onModeChange: (m: Mode) => void;
+  next: string | null;
 }) {
   const isRegister = mode === "register";
   const key = useMemo(() => mode, [mode]);
@@ -907,7 +920,7 @@ function MobileAuth({
       </div>
 
       <div key={key} className="animate-fade-up px-6 py-6">
-        {isRegister ? <RegisterForm /> : <LoginForm />}
+        {isRegister ? <RegisterForm next={next} /> : <LoginForm next={next} />}
       </div>
     </div>
   );

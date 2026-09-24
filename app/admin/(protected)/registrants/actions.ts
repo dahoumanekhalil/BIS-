@@ -79,7 +79,7 @@ export async function updateRegistrant(
     country: String(formData.get("country") ?? "Algérie"),
     tier: String(formData.get("tier") ?? ""),
     gate: String(formData.get("gate") ?? ""),
-    status: String(formData.get("status") ?? "PENDING"),
+    status: String(formData.get("status") ?? "REGISTERED"),
     paymentStatus: String(formData.get("paymentStatus") ?? "UNPAID"),
     paymentAmount: String(formData.get("paymentAmount") ?? ""),
     paymentRef: String(formData.get("paymentRef") ?? ""),

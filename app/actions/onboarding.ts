@@ -149,7 +149,7 @@ export async function startRegistration(
       companyIndustry: data.companyIndustry || null,
       companyWebsite: data.companyWebsite || null,
       companySize: data.companySize || null,
-      status: "PENDING"
+      status: "REGISTERED"
     }
   });
 

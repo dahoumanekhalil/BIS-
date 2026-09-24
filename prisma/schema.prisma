@@ -159,8 +159,18 @@ enum RegistrationType {
   PARTNER
 }
 
+// Additive migration to introduce REGISTERED alongside the legacy PENDING.
+//   REGISTERED  — the person successfully completed event registration.
+//                 Default for every new Participant.
+//   CONFIRMED   — the person is confirmed to attend (admin transition).
+//   CANCELLED   — event registration was cancelled.
+//   PENDING     — DEPRECATED. Retained only for backward compatibility of
+//                 rows created before the migration; new code must never
+//                 write this value. Retired in a follow-up commit once
+//                 the data-migration script has swept it to REGISTERED.
 enum RegistrationStatus {
   PENDING
+  REGISTERED
   CONFIRMED
   CANCELLED
 }
@@ -215,7 +225,7 @@ model Participant {
   jobTitle         String?
   country          String             @default("Algérie")
   registrationType RegistrationType   @default(ATTENDEE)
-  status           RegistrationStatus @default(PENDING)
+  status           RegistrationStatus @default(REGISTERED)
 
   // Optional link back to the AccountUser (public login system). Populated
   // when a Participant is bootstrapped from an authenticated account signup.

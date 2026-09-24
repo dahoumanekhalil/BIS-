@@ -54,11 +54,13 @@ export function StatusBadge({
   const style =
     s === "CONFIRMED" || s === "PAID" || s === "VALID"
       ? "bg-lime/20 text-ink"
-      : s === "PENDING" || s === "UNPAID"
-        ? "bg-amber-100 text-amber-900"
-        : s === "CANCELLED" || s === "REFUNDED" || s === "FAILED"
-          ? "bg-red-100 text-red-800"
-          : "bg-ink/10 text-ink/70";
+      : s === "REGISTERED"
+        ? "bg-cobalt/15 text-cobalt-700"
+        : s === "PENDING" || s === "UNPAID"
+          ? "bg-amber-100 text-amber-900"
+          : s === "CANCELLED" || s === "REFUNDED" || s === "FAILED"
+            ? "bg-red-100 text-red-800"
+            : "bg-ink/10 text-ink/70";
   return (
     <span
       className={cn(

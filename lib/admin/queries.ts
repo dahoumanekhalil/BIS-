@@ -26,7 +26,17 @@ export async function getAdminOverview() {
   ] = await Promise.all([
     prisma.participant.count(),
     prisma.participant.count({ where: { checkedInAt: { not: null } } }),
-    prisma.participant.count({ where: { status: RegistrationStatus.PENDING } }),
+    // "En attente de confirmation" — post-refactor this reads the new
+    // REGISTERED status. Legacy PENDING rows are counted alongside during
+    // the transition window so the dashboard count stays continuous while
+    // scripts/migrate-pending-to-registered.ts runs on prod.
+    prisma.participant.count({
+      where: {
+        status: {
+          in: [RegistrationStatus.REGISTERED, RegistrationStatus.PENDING]
+        }
+      }
+    }),
     prisma.participant.count({
       where: { status: RegistrationStatus.CANCELLED }
     }),

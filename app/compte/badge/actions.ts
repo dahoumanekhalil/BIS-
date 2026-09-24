@@ -1,6 +1,6 @@
 "use server";
 
-import { PaymentStatus, RegistrationStatus } from "@prisma/client";
+import { RegistrationStatus } from "@prisma/client";
 import { requireAccount } from "@/lib/account/auth";
 import { prisma } from "@/lib/db";
 import { rotateBadgeCredential } from "@/lib/badge";
@@ -40,8 +40,7 @@ export type BadgeGenerationResult =
         | "NOT_ELIGIBLE"
         | "RATE_LIMITED"
         | "NO_PARTICIPANT"
-        | "CANCELLED"
-        | "UNPAID";
+        | "CANCELLED";
       message: string;
     };
 
@@ -55,8 +54,7 @@ export async function generateOrRotateMyBadge(): Promise<BadgeGenerationResult> 
     where: { accountUserId: account.id },
     select: {
       id: true,
-      status: true,
-      paymentStatus: true
+      status: true
     }
   });
 
@@ -76,14 +74,8 @@ export async function generateOrRotateMyBadge(): Promise<BadgeGenerationResult> 
     };
   }
 
-  if (participant.paymentStatus !== PaymentStatus.PAID) {
-    return {
-      ok: false,
-      reason: "UNPAID",
-      message:
-        "Paiement non confirmé. Votre badge sera disponible une fois le règlement enregistré."
-    };
-  }
+  // Payment is deliberately NOT part of the badge gate — see
+  // docs/registration-architecture.md §Badge / QR.
 
   // Naïve rate limit — check the most recent credential for THIS participant.
   // findFirst orderBy latest so we catch both ACTIVE and freshly revoked

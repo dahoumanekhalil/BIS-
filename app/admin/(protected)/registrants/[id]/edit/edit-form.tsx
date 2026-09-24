@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 const initial: UpdateState = { status: "idle" };
 
 const TIERS = ["", "VVIP", "VIP", "VISITOR", "CONTENT_CREATOR", "IMPACT_MAKER"];
-const STATUSES = ["PENDING", "CONFIRMED", "CANCELLED"];
+// PENDING kept for legacy rows only; new rows default to REGISTERED.
+const STATUSES = ["REGISTERED", "CONFIRMED", "CANCELLED", "PENDING"];
 const PAYMENTS = ["UNPAID", "PENDING", "PAID", "REFUNDED", "FAILED"];
 const GATES = ["", "Gate A", "Gate B", "Gate C", "Gate D"];
 const REG_TYPES = ["ATTENDEE", "STARTUP", "INVESTOR", "MEDIA", "PARTNER"];

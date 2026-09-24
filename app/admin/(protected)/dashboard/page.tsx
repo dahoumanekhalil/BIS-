@@ -112,7 +112,7 @@ export default async function AdminDashboardPage({
               value={data.pending}
               hint="Inscriptions en attente de confirmation"
               tone="warn"
-              href="/admin/registrants?status=PENDING"
+              href="/admin/registrants?status=REGISTERED"
             />
           </div>
         </section>
