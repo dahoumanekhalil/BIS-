@@ -1,5 +1,12 @@
 # BIS 2027 — Payment Removal Phase 1 + 2
 
+> **STATUS — 2026-09-25:** these phases are complete and superseded by
+> the FREE-only kernel described in `docs/payment-removal-final.md`.
+> The list below is retained as an implementation log of the removal
+> steps executed against the operational payment gates. Phase 3
+> subsequently removed the schema, RBAC, and remaining application
+> surfaces documented here.
+
 Implementation report for the operational payment dependency removal.
 Read alongside `docs/payment-removal-discovery-audit.md`.
 

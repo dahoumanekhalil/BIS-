@@ -1,5 +1,13 @@
 # BIS 2027 — Payment Removal Discovery Audit
 
+> **STATUS — 2026-09-25:** the payment removal is COMPLETE. See
+> `docs/payment-removal-final.md` for the current architecture. This
+> document is retained as the pre-removal audit and describes the
+> HISTORICAL state; every dependency listed below has been removed
+> from the codebase, schema, and RBAC. It is preserved so future
+> readers can understand what payment surfaces existed before removal
+> and why each one was retired.
+
 Read-only investigation performed 2026-09-25 against `HEAD = 9afc381`.
 
 No code, schema, DB, config, or dependency has been modified. This document is the sole output.
