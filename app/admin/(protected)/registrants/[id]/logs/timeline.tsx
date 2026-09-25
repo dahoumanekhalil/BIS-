@@ -10,7 +10,6 @@ const CATEGORY_STYLE: Record<
 > = {
   account: { dot: "bg-cobalt", badge: "bg-cobalt/10 text-cobalt" },
   profile: { dot: "bg-cobalt", badge: "bg-cobalt/10 text-cobalt" },
-  payment: { dot: "bg-lime", badge: "bg-lime/25 text-ink" },
   checkin: { dot: "bg-ink", badge: "bg-ink/[0.08] text-ink" },
   email: { dot: "bg-cobalt", badge: "bg-cobalt/10 text-cobalt" },
   security: { dot: "bg-amber-500", badge: "bg-amber-100 text-amber-900" }
@@ -26,7 +25,6 @@ const STATUS_STYLE: Record<ClientLogEvent["status"], string> = {
 const CATEGORY_LABEL: Record<ClientLogEvent["category"], string> = {
   account: "Compte",
   profile: "Profil",
-  payment: "Paiement",
   checkin: "Check-in",
   email: "Email",
   security: "Sécurité"

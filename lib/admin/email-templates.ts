@@ -1,8 +1,13 @@
 import type { EmailContent } from "@/lib/email/render";
 
+// Payment-removal Phase 3: the `payment` template category is retired
+// alongside the `paymentAmount` / `paymentRef` variables and the
+// `payment-confirmed` / `payment-reminder` / `room-registration-*paid` /
+// `room-registration-pending-payment` / `room-registration-refunded`
+// templates below. Rooms are FREE-only after this phase, so the only
+// surviving room template is the plain FREE confirmation.
 export type EmailTemplateCategory =
   | "onboarding"
-  | "payment"
   | "logistics"
   | "reminder"
   | "post-event"
@@ -25,7 +30,6 @@ export type EmailTemplate = {
 
 export const CATEGORY_LABEL: Record<EmailTemplateCategory, string> = {
   onboarding: "Accueil",
-  payment: "Paiement",
   logistics: "Logistique",
   reminder: "Rappel",
   "post-event": "Post-événement",
@@ -47,8 +51,6 @@ export const EMAIL_VARIABLES = [
   "tier",
   "gate",
   "ticketCode",
-  "paymentAmount",
-  "paymentRef",
   "eventDate",
   "eventVenue",
 
@@ -57,10 +59,9 @@ export const EMAIL_VARIABLES = [
   "resetUrl",
   "expiresInHours",
 
-  // Email Infrastructure — room registration
+  // Email Infrastructure — room registration (FREE-only after
+  // Payment-removal Phase 3; roomPrice / roomCurrency retired)
   "roomName",
-  "roomPrice",
-  "roomCurrency",
 
   // Email Infrastructure — contact form relay
   "contactName",
@@ -92,7 +93,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
       heading: "Bienvenue au BIS 2027, {{firstName}}.",
       paragraphs: [
         "Merci de vous être inscrit·e au Algeria Brand Impact Summit 2027. Votre profil est enregistré.",
-        "Nous confirmerons votre accès dès la finalisation de votre paiement. Vous recevrez alors votre pass digital et votre porte d'accès."
+        "Vous recevrez votre pass digital et votre porte d'accès dès la confirmation de votre inscription."
       ],
       infoCard: {
         title: "Récapitulatif",
@@ -108,57 +109,8 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
       note: "Une question ? Répondez simplement à cet email — notre équipe reviendra vers vous sous 48 heures ouvrées."
     }
   },
-  {
-    key: "payment-confirmed",
-    category: "payment",
-    label: "Paiement confirmé",
-    description: "Confirmation du règlement + rappel du ticket.",
-    subject: "Paiement confirmé · Ticket {{ticketCode}}",
-    eyebrow: "BIS 2027 · Paiement",
-    content: {
-      eyebrow: "BIS 2027 · Paiement",
-      heading: "Votre paiement est confirmé.",
-      paragraphs: [
-        "Bonjour {{firstName}}, nous avons bien reçu votre paiement pour le BIS 2027. Votre inscription est maintenant validée.",
-        "Conservez le code ticket ci-dessous — il vous sera demandé à l'entrée le jour J."
-      ],
-      infoCard: {
-        title: "Détails du paiement",
-        rows: [
-          { label: "Montant", value: "{{paymentAmount}} DZD" },
-          { label: "Référence", value: "{{paymentRef}}" },
-          { label: "Ticket", value: "{{ticketCode}}" },
-          { label: "Tier", value: "{{tier}}" }
-        ]
-      },
-      cta: { label: "Voir mon billet", url: `${SITE}/inscription` }
-    }
-  },
-  {
-    key: "payment-reminder",
-    category: "payment",
-    label: "Rappel de paiement",
-    description: "Relance pour finaliser le règlement — ton neutre.",
-    subject: "Finalisez votre inscription au BIS 2027",
-    eyebrow: "BIS 2027 · Paiement en attente",
-    content: {
-      eyebrow: "BIS 2027 · Paiement en attente",
-      heading: "Votre inscription nécessite encore une action.",
-      paragraphs: [
-        "Bonjour {{firstName}}, votre inscription au BIS 2027 est en attente de paiement.",
-        "Pour sécuriser votre place au {{eventVenue}} le {{eventDate}}, merci de finaliser votre règlement."
-      ],
-      infoCard: {
-        rows: [
-          { label: "Nom", value: "{{firstName}} {{lastName}}" },
-          { label: "Tier", value: "{{tier}}" },
-          { label: "Statut", value: "En attente de paiement" }
-        ]
-      },
-      cta: { label: "Finaliser mon paiement", url: `${SITE}/inscription` },
-      note: "Passé le délai, votre place pourra être attribuée à la liste d'attente."
-    }
-  },
+  // Payment-removal Phase 3: `payment-confirmed` and `payment-reminder`
+  // templates removed alongside the schema drop.
   {
     key: "ticket-delivered",
     category: "logistics",
@@ -290,11 +242,10 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
       infoCard: {
         rows: [
           { label: "Nom", value: "{{firstName}} {{lastName}}" },
-          { label: "Tier", value: "{{tier}}" },
-          { label: "Référence", value: "{{paymentRef}}" }
+          { label: "Tier", value: "{{tier}}" }
         ]
       },
-      note: "Si un remboursement s'applique, il sera traité sous 10 jours ouvrés. N'hésitez pas à revenir vers nous pour les prochaines éditions."
+      note: "N'hésitez pas à revenir vers nous pour les prochaines éditions."
     }
   },
   {
@@ -309,7 +260,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
       heading: "Une place vient de se libérer.",
       paragraphs: [
         "Bonjour {{firstName}}, une place s'est libérée et nous vous l'attribuons.",
-        "Merci de finaliser votre paiement sous 48 heures pour verrouiller votre inscription."
+        "Confirmez votre présence sous 48 heures pour verrouiller votre inscription."
       ],
       infoCard: {
         rows: [
@@ -540,80 +491,9 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
       }
     }
   },
-  {
-    key: "room-registration-pending-payment",
-    category: "room",
-    label: "Inscription salle · paiement attendu",
-    description:
-      "Notification qu'une inscription à une salle payante attend le paiement.",
-    subject: "Paiement en attente · {{roomName}}",
-    eyebrow: "BIS 2027 · Inscription salle",
-    content: {
-      eyebrow: "BIS 2027 · Inscription salle",
-      heading: "Votre inscription attend votre paiement.",
-      paragraphs: [
-        "Bonjour {{firstName}}, votre demande d'inscription à la salle {{roomName}} est enregistrée.",
-        "Elle sera confirmée dès la réception de votre paiement."
-      ],
-      infoCard: {
-        title: "Détails",
-        rows: [
-          { label: "Salle", value: "{{roomName}}" },
-          { label: "Montant", value: "{{roomPrice}} {{roomCurrency}}" },
-          { label: "Date", value: "{{eventDate}}" }
-        ]
-      },
-      note: "Notre équipe reviendra vers vous pour finaliser le paiement."
-    }
-  },
-  {
-    key: "room-registration-paid",
-    category: "room",
-    label: "Salle payante confirmée",
-    description:
-      "Confirmation d'inscription après confirmation du paiement (admin).",
-    subject: "Paiement confirmé · {{roomName}}",
-    eyebrow: "BIS 2027 · Paiement salle",
-    content: {
-      eyebrow: "BIS 2027 · Paiement salle",
-      heading: "Votre inscription à {{roomName}} est confirmée.",
-      paragraphs: [
-        "Bonjour {{firstName}}, nous avons bien enregistré le paiement de votre place pour la salle {{roomName}}.",
-        "Votre accès est activé. Présentez votre badge digital à l'entrée de la salle le jour J."
-      ],
-      infoCard: {
-        title: "Récapitulatif",
-        rows: [
-          { label: "Salle", value: "{{roomName}}" },
-          { label: "Montant réglé", value: "{{roomPrice}} {{roomCurrency}}" },
-          { label: "Date", value: "{{eventDate}}" }
-        ]
-      }
-    }
-  },
-  {
-    key: "room-registration-refunded",
-    category: "room",
-    label: "Salle · remboursement effectué",
-    description: "Notification de remboursement d'une inscription salle payante.",
-    subject: "Remboursement effectué · {{roomName}}",
-    eyebrow: "BIS 2027 · Remboursement",
-    content: {
-      eyebrow: "BIS 2027 · Remboursement",
-      heading: "Votre paiement a été remboursé.",
-      paragraphs: [
-        "Bonjour {{firstName}}, votre inscription à la salle {{roomName}} a été remboursée.",
-        "Selon votre banque, le remboursement peut prendre jusqu'à 10 jours ouvrés pour apparaître sur votre compte."
-      ],
-      infoCard: {
-        title: "Détails",
-        rows: [
-          { label: "Salle", value: "{{roomName}}" },
-          { label: "Montant", value: "{{roomPrice}} {{roomCurrency}}" }
-        ]
-      }
-    }
-  },
+  // Payment-removal Phase 3: `room-registration-pending-payment`,
+  // `room-registration-paid`, and `room-registration-refunded` templates
+  // are retired. Rooms are FREE-only.
   {
     key: "room-registration-cancelled",
     category: "room",

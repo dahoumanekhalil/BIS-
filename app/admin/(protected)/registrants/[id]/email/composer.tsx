@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
 
 const initial: SendState = { status: "idle" };
 
+// Payment-removal Phase 3: `paymentAmount` and `paymentRef` removed
+// alongside the Prisma column drop. The composer's template-variable
+// substitution loses the corresponding tokens.
 type Participant = {
   id: string;
   firstName: string;
@@ -26,8 +29,6 @@ type Participant = {
   tier: string | null;
   gate: string | null;
   ticketCode: string | null;
-  paymentAmount: number | null;
-  paymentRef: string | null;
 };
 
 type HistoryItem = {
@@ -75,11 +76,6 @@ export function EmailComposer({
       tier: (participant.tier ?? "").replace("_", " "),
       gate: participant.gate ?? "",
       ticketCode: participant.ticketCode ?? "",
-      paymentAmount:
-        participant.paymentAmount != null
-          ? participant.paymentAmount.toLocaleString("fr-FR")
-          : "",
-      paymentRef: participant.paymentRef ?? "",
       eventDate: "3 – 5 janvier 2017",
       eventVenue: "CIC Alger"
     }),

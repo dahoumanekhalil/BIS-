@@ -19,7 +19,6 @@ export const dynamic = "force-dynamic";
 const ALLOWED_CATEGORIES = new Set<ClientLogCategory>([
   "account",
   "profile",
-  "payment",
   "checkin",
   "email",
   "security"

@@ -66,6 +66,8 @@ export async function sendEmail(
     ? EMAIL_TEMPLATES.find((t) => t.key === parsed.data.templateKey)
     : undefined;
 
+  // Payment-removal Phase 3: paymentAmount/paymentRef removed from the
+  // template variable set alongside the schema drop.
   const vars: EmailVars = {
     firstName: participant.firstName,
     lastName: participant.lastName,
@@ -74,11 +76,6 @@ export async function sendEmail(
     tier: (participant.tier ?? "").replace("_", " "),
     gate: participant.gate ?? "",
     ticketCode: participant.ticketCode ?? "",
-    paymentAmount:
-      participant.paymentAmount != null
-        ? participant.paymentAmount.toLocaleString("fr-FR")
-        : "",
-    paymentRef: participant.paymentRef ?? "",
     eventDate: "3 – 5 janvier 2017",
     eventVenue: "CIC Alger"
   };

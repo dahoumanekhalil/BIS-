@@ -11,10 +11,12 @@ const initial: UpdateState = { status: "idle" };
 const TIERS = ["", "VVIP", "VIP", "VISITOR", "CONTENT_CREATOR", "IMPACT_MAKER"];
 // PENDING kept for legacy rows only; new rows default to REGISTERED.
 const STATUSES = ["REGISTERED", "CONFIRMED", "CANCELLED", "PENDING"];
-const PAYMENTS = ["UNPAID", "PENDING", "PAID", "REFUNDED", "FAILED"];
 const GATES = ["", "Gate A", "Gate B", "Gate C", "Gate D"];
 const REG_TYPES = ["ATTENDEE", "STARTUP", "INVESTOR", "MEDIA", "PARTNER"];
 
+// Payment-removal Phase 3: `paymentStatus / paymentAmount / paymentRef`
+// removed from the admin edit form. The Prisma columns themselves are
+// dropped in the same commit.
 export type EditInitial = {
   firstName: string;
   lastName: string;
@@ -26,9 +28,6 @@ export type EditInitial = {
   tier: string;
   gate: string;
   status: string;
-  paymentStatus: string;
-  paymentAmount: string;
-  paymentRef: string;
   ticketCode: string;
   registrationType: string;
 };
@@ -140,36 +139,6 @@ export function EditRegistrantForm({
             options={STATUSES}
           />
         </div>
-      </Section>
-
-      {/* PAYMENT */}
-      <Section title="Paiement">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Select
-            name="paymentStatus"
-            label="Statut paiement"
-            defaultValue={init.paymentStatus}
-            options={PAYMENTS}
-          />
-          <Field
-            name="paymentAmount"
-            label="Montant (DZD)"
-            type="number"
-            defaultValue={init.paymentAmount}
-            error={err.paymentAmount}
-            hint="Entier en dinars"
-          />
-          <Field
-            name="paymentRef"
-            label="Référence"
-            defaultValue={init.paymentRef}
-            error={err.paymentRef}
-            mono
-          />
-        </div>
-        <p className="mt-2 text-[11.5px] text-ink/50">
-          Le passage à « PAID » enregistre automatiquement la date de règlement.
-        </p>
       </Section>
 
       {/* Feedback */}

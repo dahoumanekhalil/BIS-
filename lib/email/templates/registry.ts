@@ -19,7 +19,6 @@ export type TemplateVariable = {
     | "auth"
     | "registration"
     | "room"
-    | "payment"
     | "contact"
     | "admin"
   >;
@@ -47,14 +46,10 @@ export const TEMPLATE_VARIABLES: TemplateVariable[] = [
   { key: "gate", label: "Porte", description: "Porte d'entrÃ©e assignÃ©e", example: "A", categories: ["registration"] },
   { key: "ticketCode", label: "Code du billet", description: "Code alphanumÃ©rique du billet", example: "BIS-2027-A7X9", categories: ["registration"] },
 
-  // Room registration
+  // Room registration (Payment-removal Phase 3: rooms are FREE-only,
+  // so `roomPrice` and `roomCurrency` are dropped alongside the schema
+  // fields.)
   { key: "roomName", label: "Nom de la salle", description: "Salle ou espace concernÃ©", example: "Salle Kabylie", categories: ["room"] },
-  { key: "roomPrice", label: "Prix de la salle", description: "Montant formatÃ© (unitÃ©s majeures)", example: "5 000", categories: ["room"] },
-  { key: "roomCurrency", label: "Devise", description: "Code ISO 4217", example: "DZD", categories: ["room"] },
-
-  // Payment
-  { key: "paymentAmount", label: "Montant du paiement", description: "Montant rÃ©glÃ©", example: "5 000 DZD", categories: ["payment"] },
-  { key: "paymentRef", label: "RÃ©fÃ©rence paiement", description: "RÃ©fÃ©rence transactionnelle", example: "PAY-2027-000123", categories: ["payment"] },
 
   // Contact
   { key: "contactName", label: "Nom du contact", description: "Personne ayant soumis le formulaire", example: "Karim Ould", categories: ["contact"] },

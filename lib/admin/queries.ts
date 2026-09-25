@@ -2,21 +2,20 @@ import "server-only";
 
 import { prisma } from "@/lib/db";
 import {
-  PaymentStatus,
   RegistrationStatus,
   type RegistrationTier
 } from "@prisma/client";
 
+// Payment-removal Phase 3: revenue / paid / unpaid aggregations and the
+// `paymentStatus` / `paymentAmount` selects have been removed. The
+// dashboard no longer surfaces any financial metric.
 export async function getAdminOverview() {
   const [
     totalRegistrants,
     checkedIn,
     pending,
     cancelled,
-    paid,
-    unpaid,
     tierCounts,
-    revenueAgg,
     gateCounts,
     recentRegistrants,
     recentCheckIns,
@@ -26,10 +25,6 @@ export async function getAdminOverview() {
   ] = await Promise.all([
     prisma.participant.count(),
     prisma.participant.count({ where: { checkedInAt: { not: null } } }),
-    // "En attente de confirmation" — post-refactor this reads the new
-    // REGISTERED status. Legacy PENDING rows are counted alongside during
-    // the transition window so the dashboard count stays continuous while
-    // scripts/migrate-pending-to-registered.ts runs on prod.
     prisma.participant.count({
       where: {
         status: {
@@ -40,17 +35,9 @@ export async function getAdminOverview() {
     prisma.participant.count({
       where: { status: RegistrationStatus.CANCELLED }
     }),
-    prisma.participant.count({ where: { paymentStatus: PaymentStatus.PAID } }),
-    prisma.participant.count({
-      where: { paymentStatus: { in: [PaymentStatus.UNPAID, PaymentStatus.PENDING] } }
-    }),
     prisma.participant.groupBy({
       by: ["tier"],
       _count: { _all: true }
-    }),
-    prisma.participant.aggregate({
-      _sum: { paymentAmount: true },
-      where: { paymentStatus: PaymentStatus.PAID }
     }),
     prisma.participant.groupBy({
       by: ["checkedInGate"],
@@ -66,7 +53,6 @@ export async function getAdminOverview() {
         lastName: true,
         email: true,
         tier: true,
-        paymentStatus: true,
         status: true,
         createdAt: true
       }
@@ -101,9 +87,6 @@ export async function getAdminOverview() {
     checkedIn,
     pending,
     cancelled,
-    paid,
-    unpaid,
-    revenue: revenueAgg._sum.paymentAmount ?? 0,
     tierCounts: tierMap,
     gateCounts: gateMap,
     recentRegistrants,
@@ -266,20 +249,12 @@ export async function getAccessPointsWithUsage() {
 
 // Sub-Phase E — Admin room-registrations panel loader.
 //
-// Returns every RoomRegistration for a participant, joined to its
-// AccessPoint (name/slug/admission mode/price/currency/active) and the
-// current ParticipantAccess row for the same pair. The panel displays
-// each registration's status, frozen price snapshot, lifecycle dates,
-// plus whether the corresponding room access is currently effective
-// AND whether that access is owned by REGISTRATION or ADMIN (Sub-Phase
-// D's ownership boundary). The service actions remain the trusted
-// authorization boundary — this loader is read-only.
-//
-// SECURITY: whitelist select. Internal counters, `updatedAt`, and any
-// PII beyond what Participant/AccessPoint already exposes are excluded.
-// `RoomPaymentEvent` history is NOT joined here — the AuditLog and the
-// existing /logs page cover per-transition history without dumping raw
-// provider references into the panel.
+// Payment-removal Phase 3.1 (this commit): trimming the payment-field
+// selects here would cascade into the registrant-detail page, the
+// sub-phase-e tests, and the panel component in the same commit. To
+// keep Phase 3.1 a self-contained checkpoint, the projection is
+// preserved as-is; the payment fields disappear naturally when the
+// schema drops in Phase 3.4 and every consumer is updated then.
 export async function getRegistrantRoomRegistrations(participantId: string) {
   const [registrations, permissions] = await Promise.all([
     prisma.roomRegistration.findMany({

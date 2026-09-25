@@ -38,11 +38,12 @@ export const getParticipantForAccount = cache(async (accountId: string) => {
       companySize: true,
 
       // Registration state.
+      // Payment-removal Phase 3: `paymentStatus` removed alongside the
+      // Prisma column drop.
       registrationType: true,
       participationChoice: true,
       profile: true,
       status: true,
-      paymentStatus: true,
       createdAt: true,
       // Phase 18 — attendee badge role variants read from `tier`.
       // Additive whitelist entry; never exposes sensitive fields.

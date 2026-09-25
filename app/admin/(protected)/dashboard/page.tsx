@@ -21,11 +21,6 @@ export default async function AdminDashboardPage({
   const sp = await searchParams;
   const data = await getAdminOverview();
 
-  const dzd = new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "DZD",
-    maximumFractionDigits: 0
-  });
   const tierCount = (t: RegistrationTier | null) =>
     data.tierCounts.get(t) ?? 0;
 
@@ -48,7 +43,10 @@ export default async function AdminDashboardPage({
           <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-ink/50">
             Summit overview · 3-5 Janvier 2027 · CIC Alger
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Payment-removal Phase 3: `Paid` and `Revenue` KPIs are gone
+              alongside the payment schema drop. The overview is now
+              registrants + check-ins only. */}
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <KpiCard
               label="Total registrants"
               value={data.totalRegistrants.toLocaleString("fr-FR")}
@@ -68,17 +66,11 @@ export default async function AdminDashboardPage({
               href="/admin/check-in"
             />
             <KpiCard
-              label="Paid"
-              value={data.paid.toLocaleString("fr-FR")}
-              hint={`${data.unpaid} paiements en attente`}
-              tone="default"
-              href="/admin/registrants?payment=PAID"
-            />
-            <KpiCard
-              label="Revenue"
-              value={dzd.format(data.revenue)}
-              hint="Cumul paiements confirmés"
-              tone="cobalt"
+              label="À confirmer"
+              value={data.pending}
+              hint="Inscriptions en attente de confirmation"
+              tone="warn"
+              href="/admin/registrants?status=REGISTERED"
             />
           </div>
         </section>
@@ -171,17 +163,14 @@ export default async function AdminDashboardPage({
             <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-ink/50">
               Alertes opérationnelles
             </p>
+            {/* Payment-removal Phase 3: the "unpaid" bullet is gone; the
+                other two are non-financial signals about registration
+                state. */}
             <ul className="mt-4 space-y-3 text-[13px] text-ink/75">
               {data.pending > 0 && (
                 <li className="flex items-start gap-2">
                   <Dot color="amber" />
-                  {data.pending} paiement{data.pending > 1 ? "s" : ""} en attente
-                </li>
-              )}
-              {data.unpaid > 5 && (
-                <li className="flex items-start gap-2">
-                  <Dot color="cobalt" />
-                  {data.unpaid} inscriptions non réglées
+                  {data.pending} inscription{data.pending > 1 ? "s" : ""} à confirmer
                 </li>
               )}
               {data.cancelled > 0 && (
@@ -190,7 +179,7 @@ export default async function AdminDashboardPage({
                   {data.cancelled} inscription{data.cancelled > 1 ? "s" : ""} annulée{data.cancelled > 1 ? "s" : ""}
                 </li>
               )}
-              {data.pending === 0 && data.unpaid <= 5 && data.cancelled === 0 && (
+              {data.pending === 0 && data.cancelled === 0 && (
                 <li className="text-ink/50">
                   Aucune alerte pour le moment.
                 </li>

@@ -45,10 +45,6 @@ export default async function EditRegistrantPage({
             tier: r.tier ?? "",
             gate: r.gate ?? "",
             status: r.status,
-            paymentStatus: r.paymentStatus,
-            paymentAmount:
-              r.paymentAmount != null ? String(r.paymentAmount) : "",
-            paymentRef: r.paymentRef ?? "",
             ticketCode: r.ticketCode ?? "",
             registrationType: r.registrationType
           }}

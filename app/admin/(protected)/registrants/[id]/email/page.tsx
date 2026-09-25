@@ -84,9 +84,7 @@ export default async function EmailPage({
             email: r.email,
             tier: r.tier,
             gate: r.gate,
-            ticketCode: r.ticketCode,
-            paymentAmount: r.paymentAmount,
-            paymentRef: r.paymentRef
+            ticketCode: r.ticketCode
           }}
           templates={EMAIL_TEMPLATES}
           history={history}

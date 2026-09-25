@@ -11,15 +11,8 @@ import {
 
 export const metadata = { title: "Mon inscription" };
 
-// Payment status → attendee-facing label. We deliberately do NOT expose
-// payment amounts or references — those are admin-facing figures.
-const PAYMENT_LABEL: Record<string, string> = {
-  PAID: "Réglé",
-  PENDING: "En attente de règlement",
-  UNPAID: "Non réglé",
-  REFUNDED: "Remboursé",
-  FAILED: "Échec du paiement"
-};
+// Payment-removal Phase 3: the `PAYMENT_LABEL` map + the "Paiement" row
+// below were removed alongside the schema drop.
 
 export default async function CompteInscriptionPage() {
   const account = await requireAccount();
@@ -64,10 +57,6 @@ export default async function CompteInscriptionPage() {
                 ? PARTICIPATION_LABEL[participant.participationChoice]
                 : null
             }
-          />
-          <CompteRow
-            label="Paiement"
-            value={PAYMENT_LABEL[participant.paymentStatus] ?? "—"}
           />
           <CompteRow
             label="Inscrit le"

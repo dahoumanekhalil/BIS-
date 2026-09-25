@@ -7,7 +7,6 @@ import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/admin/auth";
 import { audit } from "@/lib/admin/audit";
 import {
-  PaymentStatus,
   RegistrationStatus,
   RegistrationTier,
   RegistrationType
@@ -29,6 +28,8 @@ const nullableEnum = <T extends z.EnumLike>(e: T) =>
     )
     .transform((v) => v as z.infer<z.ZodNativeEnum<T>> | null);
 
+// Payment-removal Phase 3: `paymentStatus / paymentAmount / paymentRef`
+// entries removed from the schema alongside the Prisma column drop.
 const updateSchema = z.object({
   firstName: z.string().trim().min(1, "Prénom requis"),
   lastName: z.string().trim().min(1, "Nom requis"),
@@ -40,15 +41,6 @@ const updateSchema = z.object({
   tier: nullableEnum(RegistrationTier),
   gate: optionalTrimmed,
   status: z.nativeEnum(RegistrationStatus),
-  paymentStatus: z.nativeEnum(PaymentStatus),
-  paymentAmount: z
-    .string()
-    .transform((v) => v.trim())
-    .transform((v) => (v.length === 0 ? null : Number(v)))
-    .refine((v) => v == null || (Number.isFinite(v) && v >= 0), {
-      message: "Montant invalide"
-    }),
-  paymentRef: optionalTrimmed,
   ticketCode: optionalTrimmed,
   registrationType: z.nativeEnum(RegistrationType)
 });
@@ -80,9 +72,6 @@ export async function updateRegistrant(
     tier: String(formData.get("tier") ?? ""),
     gate: String(formData.get("gate") ?? ""),
     status: String(formData.get("status") ?? "REGISTERED"),
-    paymentStatus: String(formData.get("paymentStatus") ?? "UNPAID"),
-    paymentAmount: String(formData.get("paymentAmount") ?? ""),
-    paymentRef: String(formData.get("paymentRef") ?? ""),
     ticketCode: String(formData.get("ticketCode") ?? ""),
     registrationType: String(formData.get("registrationType") ?? "ATTENDEE")
   };
@@ -106,13 +95,6 @@ export async function updateRegistrant(
   }
 
   const data = parsed.data;
-  // If paymentStatus flips to PAID and paidAt is empty, set it now.
-  const paidAt =
-    data.paymentStatus === PaymentStatus.PAID && !before.paidAt
-      ? new Date()
-      : data.paymentStatus !== PaymentStatus.PAID
-        ? null
-        : before.paidAt;
 
   try {
     await prisma.participant.update({
@@ -128,12 +110,8 @@ export async function updateRegistrant(
         tier: data.tier,
         gate: data.gate,
         status: data.status,
-        paymentStatus: data.paymentStatus,
-        paymentAmount: data.paymentAmount,
-        paymentRef: data.paymentRef,
         ticketCode: data.ticketCode,
-        registrationType: data.registrationType,
-        paidAt
+        registrationType: data.registrationType
       }
     });
   } catch (e) {
@@ -195,8 +173,7 @@ export async function deleteRegistrant(id: string) {
         firstName: before.firstName,
         lastName: before.lastName,
         email: before.email,
-        tier: before.tier,
-        paymentStatus: before.paymentStatus
+        tier: before.tier
       }
     }
   });

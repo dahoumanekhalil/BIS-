@@ -2,10 +2,14 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import type { AdminUser, Prisma } from "@prisma/client";
 
+// Payment-removal Phase 3: the `payment` client-log category is retired
+// alongside the Prisma `paymentStatus / paymentAmount / paymentRef /
+// paidAt` columns. Any surviving historical `payment.*` AuditLog rows
+// still render via the generic AuditLog path below; the synthetic
+// "Paiement confirmé" event that reads `Participant.paidAt` is deleted.
 export type ClientLogCategory =
   | "account"
   | "profile"
-  | "payment"
   | "checkin"
   | "email"
   | "security";
@@ -45,7 +49,6 @@ export type ClientLogSummary = {
 const CATEGORY_LABEL: Record<ClientLogCategory, string> = {
   account: "Compte",
   profile: "Profil",
-  payment: "Paiement",
   checkin: "Check-in",
   email: "Email",
   security: "Sécurité"
@@ -110,10 +113,6 @@ export async function getClientLogs(
       email: true,
       createdAt: true,
       updatedAt: true,
-      paidAt: true,
-      paymentStatus: true,
-      paymentAmount: true,
-      paymentRef: true,
       checkedInAt: true,
       checkedInGate: true,
       tier: true,
@@ -209,23 +208,8 @@ export async function getClientLogs(
     });
   }
 
-  if (participant.paidAt && inWindow(participant.paidAt)) {
-    events.push({
-      id: `p-paid-${participant.id}`,
-      timestamp: participant.paidAt,
-      category: "payment",
-      action: "payment.confirmed",
-      title: "Paiement confirmé",
-      description: `Règlement enregistré${participant.paymentAmount != null ? ` · ${participant.paymentAmount.toLocaleString("fr-FR")} DZD` : ""}${participant.paymentRef ? ` · réf ${participant.paymentRef}` : ""}.`,
-      status: "success",
-      metadata: {
-        amount: participant.paymentAmount,
-        reference: participant.paymentRef,
-        status: participant.paymentStatus
-      },
-      source: "Participant"
-    });
-  }
+  // Payment-removal Phase 3: synthetic "Paiement confirmé" event
+  // deleted alongside the Participant.paidAt column drop.
 
   if (participant.checkedInAt && inWindow(participant.checkedInAt)) {
     events.push({
