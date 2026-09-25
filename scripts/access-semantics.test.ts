@@ -17,7 +17,6 @@
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -65,8 +64,7 @@ before(async () => {
       firstName: "Access",
       lastName: "Semantics",
       email: user.email,
-      status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID
+      status: RegistrationStatus.CONFIRMED
     }
   });
   participantId = p.id;

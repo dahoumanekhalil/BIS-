@@ -25,7 +25,6 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import {
-  AdmissionMode,
   AdminRole,
   AdminStatus,
   PrismaClient
@@ -99,7 +98,6 @@ before(async () => {
       name: "Phase17 Test Space",
       type: "ROOM",
       order: 900,
-      admissionMode: AdmissionMode.FREE,
       description: "Fixture — Phase 17 tests"
     }
   });
@@ -161,7 +159,6 @@ describe("Space queries — projection is safe", () => {
     assert.ok(r);
     assert.equal(r?.slug, fixtureSpaceSlug);
     assert.equal(r?.type, "ROOM");
-    assert.equal(r?.admissionMode, "FREE");
     const s = JSON.stringify(r);
     for (const banned of [
       "tokenHash",
@@ -304,12 +301,13 @@ describe("Spaces server actions — code discipline (structural)", () => {
       src.match(
         /requirePermission\(\s*"settings\.manage"\s*\)/g
       ) ?? [];
-    // 13 actions (create, updateName, updateSlug, updateDescription,
-    // updateAdmission, updateOrder, toggleActive, delete, addTeam,
-    // removeTeam, updateActivities, updateTopics, updateExhibitors).
+    // 12 actions (create, updateName, updateSlug, updateDescription,
+    // updateOrder, toggleActive, delete, addTeam, removeTeam,
+    // updateActivities, updateTopics, updateExhibitors). Room-registration
+    // is FREE-only — no admissionMode action.
     assert.ok(
-      requireCalls.length >= 13,
-      `expected ≥13 settings.manage gates, got ${requireCalls.length}`
+      requireCalls.length >= 12,
+      `expected ≥12 settings.manage gates, got ${requireCalls.length}`
     );
     // No other permission gate is used for a mutation.
     assert.equal(
@@ -440,7 +438,6 @@ describe("Spaces client panels — no secret leakage", () => {
   test("no client panel references tokenHash / passwordHash / rawToken", async () => {
     const panels = [
       "identity-panel.tsx",
-      "admission-panel.tsx",
       "team-panel.tsx",
       "content-panel.tsx",
       "danger-panel.tsx"

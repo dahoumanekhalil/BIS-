@@ -29,7 +29,6 @@ import {
   AdminRole,
   AdminStatus,
   CheckInResult,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -95,7 +94,6 @@ before(async () => {
       lastName: `Scan-${suffix}`,
       email: `${P_EMAIL_PREFIX}alice-${suffix}@bis.dz`,
       status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID,
       ticketCode: `A-${suffix.toUpperCase()}`
     }
   });
@@ -107,7 +105,6 @@ before(async () => {
       lastName: `Scan-${suffix}`,
       email: `${P_EMAIL_PREFIX}bob-${suffix}@bis.dz`,
       status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID,
       ticketCode: `B-${suffix.toUpperCase()}`
     }
   });

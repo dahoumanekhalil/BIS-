@@ -15,7 +15,6 @@ import { createHash } from "node:crypto";
 import {
   AdminRole,
   AdminStatus,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -75,8 +74,7 @@ beforeEach(async () => {
       firstName: "Test",
       lastName: "Participant",
       email: `badge-test-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@bis.dz`,
-      status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID
+      status: RegistrationStatus.CONFIRMED
     }
   });
   participantId = p.id;

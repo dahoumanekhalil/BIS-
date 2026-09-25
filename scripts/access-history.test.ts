@@ -23,7 +23,6 @@ import {
   AdminRole,
   AdminStatus,
   CheckInResult,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -92,8 +91,7 @@ before(async () => {
       firstName: "History",
       lastName: "AlphaOwner",
       email: `history-a-${Date.now()}@bis.dz`,
-      status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID
+      status: RegistrationStatus.CONFIRMED
     }
   });
   participantAId = pa.id;
@@ -104,8 +102,7 @@ before(async () => {
       firstName: "History",
       lastName: "BetaOwner",
       email: `history-b-${Date.now()}@bis.dz`,
-      status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID
+      status: RegistrationStatus.CONFIRMED
     }
   });
   participantBId = pb.id;
@@ -352,8 +349,7 @@ describe("empty history", () => {
         firstName: "History",
         lastName: "NoScans",
         email: `history-empty-${Date.now()}@bis.dz`,
-        status: RegistrationStatus.CONFIRMED,
-        paymentStatus: PaymentStatus.PAID
+        status: RegistrationStatus.CONFIRMED
       }
     });
     try {

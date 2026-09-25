@@ -16,7 +16,6 @@ import {
   AdminRole,
   AdminStatus,
   CheckInResult,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -46,7 +45,6 @@ let operatorId: string;
 async function makeParticipant(
   overrides: Partial<{
     status: RegistrationStatus;
-    paymentStatus: PaymentStatus;
     checkedInAt: Date | null;
     checkinCode: string | null;
   }> = {}
@@ -59,7 +57,6 @@ async function makeParticipant(
       lastName: `Fixture-${rid}`,
       email: `${P_EMAIL_PREFIX}${rid}@bis.dz`,
       status: overrides.status ?? RegistrationStatus.CONFIRMED,
-      paymentStatus: overrides.paymentStatus ?? PaymentStatus.PAID,
       checkedInAt: overrides.checkedInAt ?? null,
       ticketCode: `TXT-${rid.toUpperCase()}`,
       checkinCode: overrides.checkinCode ?? null
@@ -258,26 +255,7 @@ describe("text validator — MAIN_ENTRANCE happy path", () => {
 });
 
 describe("text validator — MAIN_ENTRANCE denials", () => {
-  // Payment-removal Phase 1: event entry no longer requires payment.
-  // A REGISTERED-but-UNPAID participant with a valid text code must
-  // scan through with VALID.
-  test("UNPAID + REGISTERED + valid code → VALID (payment removed)", async () => {
-    const p = await makeParticipant({
-      paymentStatus: PaymentStatus.UNPAID,
-      status: RegistrationStatus.REGISTERED
-    });
-    const code = await ensureCheckinCode(p.id);
-    const r = await validateMainEntranceTextCore({
-      user: { id: operatorId },
-      slug: "main",
-      code,
-      ip: null
-    });
-    assert.equal(r.outcome, "VALID");
-    await cleanup(p.id);
-  });
-
-  test("PAID + PA granted=false → PA_REVOKED", async () => {
+  test("PA granted=false → PA_REVOKED", async () => {
     const p = await makeParticipant();
     await prisma.participantAccess.create({
       data: {

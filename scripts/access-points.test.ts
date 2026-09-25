@@ -25,7 +25,6 @@ import {
   AdminRole,
   AdminStatus,
   CheckInResult,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -70,8 +69,7 @@ before(async () => {
       firstName: "APTest",
       lastName: "Fixture",
       email: `access-points-fixture-${Date.now()}@bis.dz`,
-      status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID
+      status: RegistrationStatus.CONFIRMED
     }
   });
   participantId = participant.id;

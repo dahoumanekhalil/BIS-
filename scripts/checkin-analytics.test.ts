@@ -27,7 +27,6 @@ import {
   AdminRole,
   AdminStatus,
   CheckInResult,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -66,8 +65,7 @@ let eve: string;
 async function makeParticipant(
   first: string,
   last: string,
-  status: RegistrationStatus = RegistrationStatus.CONFIRMED,
-  payment: PaymentStatus = PaymentStatus.PAID
+  status: RegistrationStatus = RegistrationStatus.CONFIRMED
 ) {
   const suffix = randomBytes(3).toString("hex");
   const p = await prisma.participant.create({
@@ -77,7 +75,6 @@ async function makeParticipant(
       lastName: last,
       email: `${P_EMAIL_PREFIX}${first.toLowerCase()}-${suffix}@bis.dz`,
       status,
-      paymentStatus: payment,
       ticketCode: `T-${first.toUpperCase()}-${suffix.toUpperCase()}`
     }
   });
@@ -163,8 +160,8 @@ before(async () => {
   await ci(bob, mainPointId, CheckInResult.VALID, t(280), "FIRST_SCAN");
   // Carol: 1 VALID
   await ci(carol, mainPointId, CheckInResult.VALID, t(275), "FIRST_SCAN");
-  // Dave: only a denied scan at the main entrance (UNPAID)
-  await ci(dave, mainPointId, CheckInResult.UNPAID, t(270), "UNPAID");
+  // Dave: only a denied scan at the main entrance (WRONG_GATE)
+  await ci(dave, mainPointId, CheckInResult.WRONG_GATE, t(270), "WRONG_GATE");
   // Eve: never touched the main entrance in this window
 
   // ── Room scans ──
@@ -225,7 +222,7 @@ describe("main entrance metrics — unique vs scans distinction", () => {
   test("unique visitors counts DISTINCT participants with VALID scans", async () => {
     const m = await getMainEntranceMetrics(fixtureWindow());
     // Alice + Bob + Carol = 3 unique. Dave and Eve are excluded
-    // (Dave: only UNPAID at main; Eve: no main scan at all).
+    // (Dave: only WRONG_GATE at main; Eve: no main scan at all).
     // Note: other tests / seed data may add extra rows — assert ≥.
     assert.ok(
       m.uniqueVisitors >= 3,
@@ -243,9 +240,9 @@ describe("main entrance metrics — unique vs scans distinction", () => {
     assert.ok(m.uniqueVisitors < m.uniqueVisitors + m.repeatScans);
   });
 
-  test("denied scans (UNPAID / CANCELLED / ...) are NOT visitors", async () => {
+  test("denied scans (WRONG_GATE / CANCELLED / ...) are NOT visitors", async () => {
     const m = await getMainEntranceMetrics(fixtureWindow());
-    // Dave scanned UNPAID at main. He must not show up in uniqueVisitors.
+    // Dave scanned WRONG_GATE at main. He must not show up in uniqueVisitors.
     // We can't observe individual IDs from the aggregate, but we can
     // verify deniedScans got a non-zero count.
     assert.ok(m.deniedScans >= 1, `expected ≥1 denied, got ${m.deniedScans}`);

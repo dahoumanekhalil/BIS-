@@ -10,26 +10,23 @@
 // Covered (owner-locked decisions: strict per-room PA rule from
 // spec §14; C1 = A "every scan is a fresh CheckIn(VALID) — rooms
 // allow repeat entry"):
-//   1. valid + PAID + PA granted=true       → VALID (CheckIn(VALID))
-//   2. valid + PAID + PA granted=false      → PA_REVOKED
-//   3. valid + PAID + no PA row             → PA_NOT_GRANTED (default-deny)
-//   4. valid + UNPAID + PA granted=true     → VALID (Payment-removal Phase 1)
-//                                              plus regression: UNPAID + no PA row
-//                                              → PA_NOT_GRANTED (default-deny)
-//   5. valid + CANCELLED (verify path)      → CANCELLED, AuditLog only
-//   6. valid + CANCELLED (status path)      → CheckIn(CANCELLED)
-//   7. two consecutive VALID scans          → TWO CheckIn(VALID) rows
+//   1. valid + PA granted=true              → VALID (CheckIn(VALID))
+//   2. valid + PA granted=false             → PA_REVOKED
+//   3. valid + no PA row                    → PA_NOT_GRANTED (default-deny)
+//   4. valid + CANCELLED (verify path)      → CANCELLED, AuditLog only
+//   5. valid + CANCELLED (status path)      → CheckIn(CANCELLED)
+//   6. two consecutive VALID scans          → TWO CheckIn(VALID) rows
 //                                              (no ALREADY_CHECKED_IN)
-//   8. revoked / expired / random QR        → AuditLog only, no CheckIn
-//   9. inactive AccessPoint                 → ACCESS_POINT_INACTIVE
-//  10. MAIN_ENTRANCE sent to room validator → ACCESS_POINT_WRONG_TYPE
-//  11. unknown slug                         → ACCESS_POINT_UNKNOWN
-//  12. cross-room isolation — PA on room-01 does NOT authorize room-02
-//  13. Participant.checkedInAt NEVER mutated by room validation
-//  14. rawToken never persisted
-//  15. CheckIn.gate = AccessPoint.slug
-//  16. Structural — validator does NOT set Participant.checkedInAt.
-//  17. Structural — validator does NOT use an atomic claim.
+//   7. revoked / expired / random QR        → AuditLog only, no CheckIn
+//   8. inactive AccessPoint                 → ACCESS_POINT_INACTIVE
+//   9. MAIN_ENTRANCE sent to room validator → ACCESS_POINT_WRONG_TYPE
+//  10. unknown slug                         → ACCESS_POINT_UNKNOWN
+//  11. cross-room isolation — PA on room-01 does NOT authorize room-02
+//  12. Participant.checkedInAt NEVER mutated by room validation
+//  13. rawToken never persisted
+//  14. CheckIn.gate = AccessPoint.slug
+//  15. Structural — validator does NOT set Participant.checkedInAt.
+//  16. Structural — validator does NOT use an atomic claim.
 
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -39,7 +36,6 @@ import {
   AdminStatus,
   BadgeStatus,
   CheckInResult,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -64,7 +60,6 @@ const P_EMAIL_PREFIX = "room-fixture-";
 async function makeParticipant(
   overrides: Partial<{
     status: RegistrationStatus;
-    paymentStatus: PaymentStatus;
     checkedInAt: Date | null;
     ticketCode: string | null;
   }> = {}
@@ -78,7 +73,6 @@ async function makeParticipant(
         .toString(36)
         .slice(2, 8)}@bis.dz`,
       status: overrides.status ?? RegistrationStatus.CONFIRMED,
-      paymentStatus: overrides.paymentStatus ?? PaymentStatus.PAID,
       checkedInAt: overrides.checkedInAt ?? null,
       ticketCode:
         overrides.ticketCode !== undefined
@@ -290,48 +284,6 @@ describe("ROOM — denials", () => {
     });
     assert.equal(row?.result, CheckInResult.UNKNOWN);
     assert.equal(row?.reason, "PA_NOT_GRANTED");
-    await cleanupFixture(p.id);
-  });
-
-  // Payment-removal Phase 1: room entry no longer requires PAID. An
-  // UNPAID participant with an explicit ParticipantAccess.granted=true
-  // row for this room MUST scan through with VALID. The room domain
-  // remains default-deny — PA_NOT_GRANTED / PA_REVOKED are unchanged.
-  test("UNPAID + PA granted=true → VALID (payment removed)", async () => {
-    const p = await makeParticipant({
-      paymentStatus: PaymentStatus.UNPAID,
-      status: RegistrationStatus.REGISTERED
-    });
-    await grantRoom(p.id, room1PointId);
-    const raw = await issueActive(p.id);
-    const r = await validateRoomQrCore({
-      user: { id: operatorId },
-      slug: "room-01",
-      rawToken: raw
-    });
-    assert.equal(r.outcome, "VALID");
-    const row = await prisma.checkIn.findFirst({
-      where: { participantId: p.id, accessPointId: room1PointId }
-    });
-    assert.equal(row?.result, CheckInResult.VALID);
-    assert.equal(row?.reason, "ROOM_ENTRY");
-    await cleanupFixture(p.id);
-  });
-
-  // Regression: UNPAID + no PA row must still be denied, but with
-  // PA_NOT_GRANTED (default-deny), NOT UNPAID.
-  test("UNPAID + no PA row → PA_NOT_GRANTED (still default-deny)", async () => {
-    const p = await makeParticipant({
-      paymentStatus: PaymentStatus.UNPAID,
-      status: RegistrationStatus.REGISTERED
-    });
-    const raw = await issueActive(p.id);
-    const r = await validateRoomQrCore({
-      user: { id: operatorId },
-      slug: "room-01",
-      rawToken: raw
-    });
-    assert.equal(r.outcome, "PA_NOT_GRANTED");
     await cleanupFixture(p.id);
   });
 

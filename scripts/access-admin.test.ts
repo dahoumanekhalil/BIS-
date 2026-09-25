@@ -32,7 +32,6 @@ import { z } from "zod";
 import {
   AdminRole,
   AdminStatus,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -98,8 +97,7 @@ before(async () => {
       firstName: "AccessAdmin",
       lastName: "Fixture",
       email: `access-admin-fixture-${Date.now()}@bis.dz`,
-      status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID
+      status: RegistrationStatus.CONFIRMED
     }
   });
   participantId = p.id;
@@ -110,8 +108,7 @@ before(async () => {
       firstName: "AccessAdmin2",
       lastName: "Fixture",
       email: `access-admin-fixture2-${Date.now()}@bis.dz`,
-      status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID
+      status: RegistrationStatus.CONFIRMED
     }
   });
   secondParticipantId = p2.id;

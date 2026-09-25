@@ -7,26 +7,24 @@
 // Phase 2 service, and asserts DB state + response shape.
 //
 // Covered (owner-locked decisions B1 = C, B2 = A, B3 = B):
-//   1. valid + PAID + no PA row              → VALID
-//   2. valid + PAID + PA granted=true        → VALID
-//   3. valid + PAID + PA granted=false       → PA_REVOKED, no checkedInAt
-//   4. valid + UNPAID + REGISTERED           → VALID
-//                                             (Payment-removal Phase 1)
-//   5. valid + CANCELLED                     → CANCELLED
-//   6. valid + already checked in            → ALREADY_CHECKED_IN, no re-write
-//   7. revoked badge                         → BADGE_REVOKED, AuditLog only
-//   8. expired badge                         → BADGE_EXPIRED, AuditLog only
-//   9. invalid/random QR                     → BADGE_INVALID, AuditLog only
-//  10. inactive AccessPoint                  → ACCESS_POINT_INACTIVE
-//  11. ROOM AccessPoint                      → ACCESS_POINT_WRONG_TYPE
-//  12. concurrent scans                      → exactly one VALID
-//  13. rawToken never persisted / audited
-//  14. one AuditLog per scan attempt
-//  15. ParticipantAccess untouched by validation
-//  16. CheckIn.ticketCode = participant.ticketCode ?? ""
-//  17. CheckIn.gate = AccessPoint.slug
-//  18. CheckIn.accessPointId = resolved MAIN_ENTRANCE id
-//  19. Legacy manual `validateTicket` still uses `checkin.validate` +
+//   1. valid + no PA row                     → VALID
+//   2. valid + PA granted=true               → VALID
+//   3. valid + PA granted=false              → PA_REVOKED, no checkedInAt
+//   4. valid + CANCELLED                     → CANCELLED
+//   5. valid + already checked in            → ALREADY_CHECKED_IN, no re-write
+//   6. revoked badge                         → BADGE_REVOKED, AuditLog only
+//   7. expired badge                         → BADGE_EXPIRED, AuditLog only
+//   8. invalid/random QR                     → BADGE_INVALID, AuditLog only
+//   9. inactive AccessPoint                  → ACCESS_POINT_INACTIVE
+//  10. ROOM AccessPoint                      → ACCESS_POINT_WRONG_TYPE
+//  11. concurrent scans                      → exactly one VALID
+//  12. rawToken never persisted / audited
+//  13. one AuditLog per scan attempt
+//  14. ParticipantAccess untouched by validation
+//  15. CheckIn.ticketCode = participant.ticketCode ?? ""
+//  16. CheckIn.gate = AccessPoint.slug
+//  17. CheckIn.accessPointId = resolved MAIN_ENTRANCE id
+//  18. Legacy manual `validateTicket` still uses `checkin.validate` +
 //      `"checkin.scan"` audit action + non-QR path (structural).
 
 import { after, before, describe, test } from "node:test";
@@ -36,7 +34,6 @@ import {
   AdminRole,
   AdminStatus,
   CheckInResult,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus,
   BadgeStatus
@@ -61,7 +58,6 @@ const P_EMAIL_PREFIX = "main-entrance-fixture-";
 async function makeParticipant(
   overrides: Partial<{
     status: RegistrationStatus;
-    paymentStatus: PaymentStatus;
     checkedInAt: Date | null;
     ticketCode: string | null;
   }> = {}
@@ -75,7 +71,6 @@ async function makeParticipant(
         .toString(36)
         .slice(2, 8)}@bis.dz`,
       status: overrides.status ?? RegistrationStatus.CONFIRMED,
-      paymentStatus: overrides.paymentStatus ?? PaymentStatus.PAID,
       checkedInAt: overrides.checkedInAt ?? null,
       ticketCode:
         overrides.ticketCode !== undefined
@@ -311,56 +306,6 @@ describe("MAIN_ENTRANCE — denials with participant resolved", () => {
     });
     assert.equal(after?.checkedInAt, null);
 
-    await cleanupFixture(p.id);
-  });
-
-  // Payment-removal Phase 1: event entry no longer requires
-  // paymentStatus === PAID. A REGISTERED-but-UNPAID participant with a
-  // valid badge must scan through with VALID.
-  test("UNPAID + REGISTERED → VALID (payment removed)", async () => {
-    const p = await makeParticipant({
-      paymentStatus: PaymentStatus.UNPAID,
-      status: RegistrationStatus.REGISTERED
-    });
-    const raw = await issueActive(p.id);
-
-    const r = await validateMainEntranceQrCore({
-      user: { id: operatorId },
-      slug: "main",
-      rawToken: raw
-    });
-    assert.equal(r.outcome, "VALID");
-    const row = await prisma.checkIn.findFirst({
-      where: { participantId: p.id, accessPointId: mainPointId }
-    });
-    assert.equal(row?.result, CheckInResult.VALID);
-    assert.equal(row?.reason, "FIRST_SCAN");
-    // The unpaid participant IS the one who scanned through, so
-    // checkedInAt MUST now be populated.
-    const after = await prisma.participant.findUnique({
-      where: { id: p.id },
-      select: { checkedInAt: true }
-    });
-    assert.notEqual(after?.checkedInAt, null);
-
-    await cleanupFixture(p.id);
-  });
-
-  // Regression: no path should still produce CheckInResult.UNPAID as
-  // an outcome. If a future change reintroduces the payment gate,
-  // this test should be replaced deliberately, not silently deleted.
-  test("no scan path produces UNPAID (regression)", async () => {
-    const p = await makeParticipant({
-      paymentStatus: PaymentStatus.UNPAID,
-      status: RegistrationStatus.REGISTERED
-    });
-    const raw = await issueActive(p.id);
-    const r = await validateMainEntranceQrCore({
-      user: { id: operatorId },
-      slug: "main",
-      rawToken: raw
-    });
-    assert.notEqual(r.outcome, "UNPAID");
     await cleanupFixture(p.id);
   });
 

@@ -335,30 +335,20 @@ describe("Legacy Participant claim via email verification", () => {
   });
 });
 
-describe("Badge issuance decoupled from payment", () => {
-  test("ensureActiveBadge issues even when paymentStatus is UNPAID", async () => {
-    const account = await makeAccount(`badge-unpaid-${Date.now()}@bis-test.local`);
+describe("Badge issuance", () => {
+  test("ensureActiveBadge issues for a freshly created participant", async () => {
+    const account = await makeAccount(`badge-fresh-${Date.now()}@bis-test.local`);
     createdAccountIds.push(account.id);
     const ensured = await ensureParticipantForAccount(account);
     assert.equal(ensured.kind, "ready");
     if (ensured.kind !== "ready") return;
     createdParticipantIds.push(ensured.participant.id);
 
-    // Sanity — paymentStatus should default to UNPAID.
-    const p0 = await prisma.participant.findUnique({
-      where: { id: ensured.participant.id },
-      select: { paymentStatus: true }
-    });
-    assert.equal(p0?.paymentStatus, "UNPAID");
-
     await ensureActiveBadge(ensured.participant.id);
     const badge = await prisma.badgeCredential.findFirst({
       where: { participantId: ensured.participant.id, status: "ACTIVE" }
     });
-    assert.ok(
-      badge,
-      "an ACTIVE BadgeCredential must exist for an UNPAID participant"
-    );
+    assert.ok(badge, "an ACTIVE BadgeCredential must exist");
   });
 
   test("ensureActiveBadge is idempotent", async () => {

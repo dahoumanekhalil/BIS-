@@ -23,7 +23,6 @@ import {
   AdminRole,
   AdminStatus,
   CheckInResult,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus,
   RegistrationTier
@@ -66,7 +65,6 @@ async function makeParticipant(
   overrides: Partial<{
     tier: RegistrationTier | null;
     status: RegistrationStatus;
-    paymentStatus: PaymentStatus;
   }> = {}
 ) {
   const suffix = randomBytes(3).toString("hex");
@@ -77,7 +75,6 @@ async function makeParticipant(
       lastName: last,
       email: `${P_EMAIL_PREFIX}${first.toLowerCase()}-${suffix}@bis.dz`,
       status: overrides.status ?? RegistrationStatus.CONFIRMED,
-      paymentStatus: overrides.paymentStatus ?? PaymentStatus.PAID,
       tier: overrides.tier ?? null,
       ticketCode: `T-${first.toUpperCase()}-${suffix.toUpperCase()}`
     }
@@ -323,7 +320,7 @@ describe("Phase 21 · recent activity always VALID", () => {
   test("recent activity ignores f.result and always returns VALID rows", async () => {
     const rows = await getRecentActivity({
       ...fixtureWindow(),
-      result: CheckInResult.UNPAID // hostile try
+      result: CheckInResult.WRONG_GATE // hostile try
     });
     for (const r of rows) {
       assert.equal(

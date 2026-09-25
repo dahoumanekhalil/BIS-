@@ -19,7 +19,6 @@ import {
   ApplicationType,
   CheckInResult,
   ParticipationChoice,
-  PaymentStatus,
   PrismaClient,
   RegistrationStatus
 } from "@prisma/client";
@@ -201,10 +200,6 @@ async function main() {
       organization: "Smoke Studio",
       jobTitle: "Founder",
       status: RegistrationStatus.CONFIRMED,
-      paymentStatus: PaymentStatus.PAID,
-      paymentAmount: 45000,
-      paymentRef: "BIS-SMOKE-000001",
-      paidAt: new Date(),
       ticketCode: `BIS-SMOKE-${Date.now().toString().slice(-6)}`,
       participationChoice: ParticipationChoice.SPONSOR,
       profile: "COMPANY",
