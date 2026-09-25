@@ -8,24 +8,24 @@ import {
   RolePageShell,
   AlreadyAppliedPanel
 } from "@/components/register/role-page-shell";
-import { SpeakerApplicationForm } from "@/components/register/speaker-form";
+import { PartnerApplicationForm } from "@/components/register/partner-form";
 
 export const metadata: Metadata = {
-  title: "Postuler · Intervenant",
+  title: "Postuler · Partenaire",
   description:
-    "Proposez votre intervention au comité éditorial du Algeria Brand Impact Summit 2027."
+    "Proposez une collaboration stratégique avec le Algeria Brand Impact Summit 2027."
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function RegisterSpeakerPage() {
+export default async function RegisterPartnerPage() {
   const account = await getCurrentAccount();
   if (!account) {
     return (
       <RoleAuthGate
-        role="intervenant"
-        next="/register/speaker"
-        blurb="Proposer une intervention, un keynote ou une masterclass au comité éditorial BIS."
+        role="partenaire"
+        next="/register/partner"
+        blurb="Institution, université, ONG ou média — construire une collaboration stratégique avec BIS."
       />
     );
   }
@@ -57,25 +57,28 @@ export default async function RegisterSpeakerPage() {
   const participant = ensured.participant;
 
   const existing = await prisma.application.findFirst({
-    where: { participantId: participant.id, type: "SPEAKER" },
+    where: { participantId: participant.id, type: "PARTNER" },
     select: { id: true }
   });
   if (existing) {
-    return <AlreadyAppliedPanel roleLabel="Intervenant" />;
+    return <AlreadyAppliedPanel roleLabel="Partenaire" />;
   }
 
   return (
     <RolePageShell
-      eyebrow="Étape finale · Intervenant"
-      title="Proposez votre intervention."
-      intro="Le comité éditorial étudie chaque proposition ; cette soumission n'implique pas une sélection automatique."
+      eyebrow="Étape finale · Partenaire"
+      title="Proposez une collaboration stratégique."
+      intro="L'équipe partenariats étudiera votre candidature et vous répondra sous 48 heures."
       accountEmail={account.email}
     >
-      <SpeakerApplicationForm
+      <PartnerApplicationForm
         initial={{
           phone: participant.phone ?? "",
           country: participant.country ?? "Algérie",
-          organization: participant.organization ?? ""
+          organization: participant.organization ?? "",
+          industry: participant.companyIndustry ?? "",
+          website: participant.companyWebsite ?? "",
+          position: participant.jobTitle ?? ""
         }}
         needsPhone={!participant.phone}
       />

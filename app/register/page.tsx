@@ -31,10 +31,13 @@ export default async function RegisterRoleSelectorPage({
   const sp = await searchParams;
   const preselect = participationFromSlug(sp.participation);
 
-  // If the URL preselects an already-implemented role, jump straight there.
-  // The role page handles authentication, so we can safely delegate.
+  // If the URL preselects a known role, jump straight there. Each role
+  // page handles authentication, so we can safely delegate.
   if (preselect === "VISITOR") redirect("/register/visitor");
   if (preselect === "SPEAKER") redirect("/register/speaker");
+  if (preselect === "SPONSOR") redirect("/register/sponsor");
+  if (preselect === "PARTNER") redirect("/register/partner");
+  if (preselect === "CONTENT_CREATOR") redirect("/register/content-creator");
 
   const account = await getCurrentAccount();
 

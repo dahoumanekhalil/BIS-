@@ -8,24 +8,24 @@ import {
   RolePageShell,
   AlreadyAppliedPanel
 } from "@/components/register/role-page-shell";
-import { SpeakerApplicationForm } from "@/components/register/speaker-form";
+import { SponsorApplicationForm } from "@/components/register/sponsor-form";
 
 export const metadata: Metadata = {
-  title: "Postuler · Intervenant",
+  title: "Postuler · Sponsor",
   description:
-    "Proposez votre intervention au comité éditorial du Algeria Brand Impact Summit 2027."
+    "Explorez une opportunité de sponsoring avec le Algeria Brand Impact Summit 2027."
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function RegisterSpeakerPage() {
+export default async function RegisterSponsorPage() {
   const account = await getCurrentAccount();
   if (!account) {
     return (
       <RoleAuthGate
-        role="intervenant"
-        next="/register/speaker"
-        blurb="Proposer une intervention, un keynote ou une masterclass au comité éditorial BIS."
+        role="sponsor"
+        next="/register/sponsor"
+        blurb="Associer votre marque à l'écosystème BIS et à l'ambition Algérie 2027."
       />
     );
   }
@@ -57,25 +57,28 @@ export default async function RegisterSpeakerPage() {
   const participant = ensured.participant;
 
   const existing = await prisma.application.findFirst({
-    where: { participantId: participant.id, type: "SPEAKER" },
+    where: { participantId: participant.id, type: "SPONSOR" },
     select: { id: true }
   });
   if (existing) {
-    return <AlreadyAppliedPanel roleLabel="Intervenant" />;
+    return <AlreadyAppliedPanel roleLabel="Sponsor" />;
   }
 
   return (
     <RolePageShell
-      eyebrow="Étape finale · Intervenant"
-      title="Proposez votre intervention."
-      intro="Le comité éditorial étudie chaque proposition ; cette soumission n'implique pas une sélection automatique."
+      eyebrow="Étape finale · Sponsor"
+      title="Explorez une opportunité de sponsoring."
+      intro="L'équipe partenariats étudiera votre candidature et vous répondra sous 48 heures."
       accountEmail={account.email}
     >
-      <SpeakerApplicationForm
+      <SponsorApplicationForm
         initial={{
           phone: participant.phone ?? "",
           country: participant.country ?? "Algérie",
-          organization: participant.organization ?? ""
+          organization: participant.organization ?? "",
+          industry: participant.companyIndustry ?? "",
+          website: participant.companyWebsite ?? "",
+          position: participant.jobTitle ?? ""
         }}
         needsPhone={!participant.phone}
       />

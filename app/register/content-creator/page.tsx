@@ -8,24 +8,24 @@ import {
   RolePageShell,
   AlreadyAppliedPanel
 } from "@/components/register/role-page-shell";
-import { SpeakerApplicationForm } from "@/components/register/speaker-form";
+import { ContentCreatorApplicationForm } from "@/components/register/content-creator-form";
 
 export const metadata: Metadata = {
-  title: "Postuler · Intervenant",
+  title: "Postuler · Créateur de contenu",
   description:
-    "Proposez votre intervention au comité éditorial du Algeria Brand Impact Summit 2027."
+    "Rejoignez la communauté des créateurs autour du Algeria Brand Impact Summit 2027."
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function RegisterSpeakerPage() {
+export default async function RegisterContentCreatorPage() {
   const account = await getCurrentAccount();
   if (!account) {
     return (
       <RoleAuthGate
-        role="intervenant"
-        next="/register/speaker"
-        blurb="Proposer une intervention, un keynote ou une masterclass au comité éditorial BIS."
+        role="créateur de contenu"
+        next="/register/content-creator"
+        blurb="Amplifier les idées, histoires et impact du sommet auprès de votre audience."
       />
     );
   }
@@ -57,25 +57,26 @@ export default async function RegisterSpeakerPage() {
   const participant = ensured.participant;
 
   const existing = await prisma.application.findFirst({
-    where: { participantId: participant.id, type: "SPEAKER" },
+    where: { participantId: participant.id, type: "CONTENT_CREATOR" },
     select: { id: true }
   });
   if (existing) {
-    return <AlreadyAppliedPanel roleLabel="Intervenant" />;
+    return <AlreadyAppliedPanel roleLabel="Créateur de contenu" />;
   }
 
   return (
     <RolePageShell
-      eyebrow="Étape finale · Intervenant"
-      title="Proposez votre intervention."
-      intro="Le comité éditorial étudie chaque proposition ; cette soumission n'implique pas une sélection automatique."
+      eyebrow="Étape finale · Créateur de contenu"
+      title="Proposez votre couverture éditoriale."
+      intro="L'équipe éditoriale étudiera votre proposition. Aucune accréditation n'est automatique."
       accountEmail={account.email}
     >
-      <SpeakerApplicationForm
+      <ContentCreatorApplicationForm
         initial={{
           phone: participant.phone ?? "",
           country: participant.country ?? "Algérie",
-          organization: participant.organization ?? ""
+          organization: participant.organization ?? "",
+          website: participant.companyWebsite ?? ""
         }}
         needsPhone={!participant.phone}
       />

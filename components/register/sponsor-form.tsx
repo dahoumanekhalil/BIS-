@@ -2,9 +2,9 @@
 
 import { useActionState } from "react";
 import {
-  submitSpeakerApplication,
-  type SpeakerRegisterState
-} from "@/app/actions/register-speaker";
+  submitSponsorApplication,
+  type SponsorRegisterState
+} from "@/app/actions/register-sponsor";
 import {
   ContactFieldset,
   ErrorBanner,
@@ -13,18 +13,25 @@ import {
   TextArea
 } from "@/components/register/form-primitives";
 
-const initial: SpeakerRegisterState = { status: "idle" };
+const initial: SponsorRegisterState = { status: "idle" };
 
-type Init = { phone: string; country: string; organization: string };
+type Init = {
+  phone: string;
+  country: string;
+  organization: string;
+  industry: string;
+  website: string;
+  position: string;
+};
 
-export function SpeakerApplicationForm({
+export function SponsorApplicationForm({
   initial: init,
   needsPhone
 }: {
   initial: Init;
   needsPhone: boolean;
 }) {
-  const [state, formAction] = useActionState(submitSpeakerApplication, initial);
+  const [state, formAction] = useActionState(submitSponsorApplication, initial);
   const err = state.status === "error" ? state.fieldErrors ?? {} : {};
 
   return (
@@ -38,7 +45,7 @@ export function SpeakerApplicationForm({
 
       <fieldset className="grid gap-4">
         <legend className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-ink/55">
-          Votre profil
+          Votre organisation
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
@@ -47,79 +54,65 @@ export function SpeakerApplicationForm({
             autoComplete="organization"
             defaultValue={init.organization}
             error={err.organization}
-            hint="Optionnel"
+            required
           />
           <Field
-            label="Titre professionnel"
-            name="professionalTitle"
-            error={err.professionalTitle}
-            required
+            label="Secteur d'activité"
+            name="industry"
+            defaultValue={init.industry}
+            error={err.industry}
+            hint="Optionnel"
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
-            label="LinkedIn"
-            name="linkedin"
-            type="url"
-            error={err.linkedin}
-            hint="https://…"
-          />
-          <Field
             label="Site web"
             name="website"
             type="url"
+            defaultValue={init.website}
             error={err.website}
             hint="https://…"
           />
+          <Field
+            label="Votre fonction"
+            name="position"
+            defaultValue={init.position}
+            error={err.position}
+            hint="Optionnel"
+          />
         </div>
         <Field
-          label="Photo (URL)"
-          name="photoUrl"
+          label="Logo (URL)"
+          name="logoUrl"
           type="url"
-          error={err.photoUrl}
-          hint="Lien vers une photo professionnelle"
-        />
-        <TextArea
-          label="Bio"
-          name="bio"
-          error={err.bio}
-          rows={4}
-          minLength={20}
-          maxLength={2000}
-          required
-        />
-        <Field
-          label="Expertise clé"
-          name="expertise"
-          error={err.expertise}
-          hint="Optionnel — vos domaines d'expertise"
+          error={err.logoUrl}
+          hint="Lien vers un logo hébergé — optionnel"
         />
       </fieldset>
 
       <fieldset className="grid gap-4">
         <legend className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-ink/55">
-          Votre intervention
+          Vos intentions sponsor
         </legend>
         <Field
-          label="Sujet proposé"
-          name="proposedTopic"
-          error={err.proposedTopic}
-          required
+          label="Type d'intérêt"
+          name="interest"
+          error={err.interest}
+          hint="Presenting, Platinum, Gold, Média, Écosystème… (optionnel)"
         />
         <TextArea
-          label="Proposition détaillée"
-          name="proposal"
-          error={err.proposal}
-          rows={6}
-          minLength={20}
-          maxLength={3000}
-          required
+          label="Domaines d'intérêt"
+          name="focusAreas"
+          error={err.focusAreas}
+          rows={4}
+          maxLength={600}
+          hint="Optionnel — Innovation, technologie, entrepreneuriat, impact…"
         />
         <TextArea
-          label="Message au comité"
+          label="Message à l'équipe partenariats"
           name="message"
           error={err.message}
-          rows={3}
+          rows={4}
           maxLength={4000}
           hint="Optionnel"
         />
@@ -133,8 +126,8 @@ export function SpeakerApplicationForm({
       />
 
       <p className="text-[12px] text-ink/55">
-        En soumettant, vous acceptez que le comité éditorial BIS étudie votre
-        proposition. Aucune sélection n&apos;est automatique.
+        En soumettant, vous acceptez d&apos;être contacté(e) par l&apos;équipe
+        partenariats BIS. Aucune sélection n&apos;est automatique.
       </p>
     </form>
   );

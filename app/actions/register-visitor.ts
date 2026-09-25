@@ -117,20 +117,26 @@ export async function completeVisitorRegistration(
   }
   const participant = ensured.participant;
 
-  // Stamp participationChoice + status. participationChoice never
-  // overwrites an existing non-VISITOR choice — a Participant who already
-  // applied as a SPEAKER can also be a VISITOR (visitor is the "attend"
-  // opportunity; SPEAKER is layered on top via Application). We only set
-  // the choice when it is currently NULL or already VISITOR.
+  // Stamp participationChoice — never overwrite an existing non-VISITOR
+  // choice. A Participant who already applied as SPEAKER can also be a
+  // VISITOR (visitor = "attend" opportunity; SPEAKER is layered via
+  // Application). We only set the choice when currently NULL or VISITOR.
   await prisma.participant.updateMany({
     where: {
       id: participant.id,
       OR: [{ participationChoice: null }, { participationChoice: "VISITOR" }]
     },
-    data: {
-      participationChoice: "VISITOR",
-      status: "REGISTERED"
-    }
+    data: { participationChoice: "VISITOR" }
+  });
+
+  // Status — set REGISTERED but ONLY from PENDING (legacy) or REGISTERED
+  // (idempotent). Never downgrade CONFIRMED. Never resurrect CANCELLED.
+  await prisma.participant.updateMany({
+    where: {
+      id: participant.id,
+      status: { in: ["PENDING", "REGISTERED"] }
+    },
+    data: { status: "REGISTERED" }
   });
 
   // Back-fills — only write when the target column is NULL / defaulted so

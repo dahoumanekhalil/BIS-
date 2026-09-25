@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ApplicationType } from "@prisma/client";
 import { requireAccount } from "@/lib/account/auth";
 import {
   accessStateFor,
@@ -19,6 +20,20 @@ import {
   type StatusTone
 } from "@/lib/account/labels";
 import { eventInfo } from "@/lib/utils";
+
+// Professional opportunities offered on the dashboard. Filtered
+// against the participant's existing applications so already-applied
+// roles drop off automatically.
+const OPPORTUNITIES: { type: ApplicationType; label: string; href: string }[] = [
+  { type: "SPEAKER", label: "Postuler comme intervenant", href: "/register/speaker" },
+  { type: "SPONSOR", label: "Explorer le sponsoring", href: "/register/sponsor" },
+  { type: "PARTNER", label: "Proposer un partenariat", href: "/register/partner" },
+  {
+    type: "CONTENT_CREATOR",
+    label: "Rejoindre les créateurs",
+    href: "/register/content-creator"
+  }
+];
 
 // Tri-state pill mapping — kept in sync with /compte/acces. See
 // lib/account/participant.ts::accessStateFor for the state semantics.
@@ -210,27 +225,34 @@ export default async function ComptePage() {
           </CompteCard>
         )}
 
-        {/* Opportunities — Commit 1 exposes only the Speaker path; the other
-             roles arrive in Commit 2 and are intentionally omitted rather
-             than shown as "coming soon" here to avoid fake buttons. */}
-        {!applications.some((a) => a.type === "SPEAKER") && (
-          <CompteCard
-            eyebrow="Opportunités"
-            title="Postuler comme intervenant"
-          >
-            <p className="text-[13px] leading-relaxed text-ink/70">
-              Proposez une intervention, un keynote ou une masterclass au
-              comité éditorial BIS. Votre inscription existante reste valide —
-              une seule candidature par rôle.
-            </p>
-            <div className="mt-5">
-              <Link href="/register/speaker" className="btn-lime w-full justify-center">
-                Postuler comme intervenant
-                <span aria-hidden>→</span>
-              </Link>
-            </div>
-          </CompteCard>
-        )}
+        {/* Opportunities — every professional role not yet applied for is
+             surfaced here. The list is filtered against `applications` so
+             existing applications drop off automatically. */}
+        {(() => {
+          const applied = new Set(applications.map((a) => a.type));
+          const remaining = OPPORTUNITIES.filter((o) => !applied.has(o.type));
+          if (remaining.length === 0) return null;
+          return (
+            <CompteCard eyebrow="Opportunités" title="Ajouter une candidature">
+              <p className="text-[13px] leading-relaxed text-ink/70">
+                Votre inscription reste valide — une candidature par rôle.
+              </p>
+              <ul className="mt-4 grid gap-2">
+                {remaining.map((o) => (
+                  <li key={o.type}>
+                    <Link
+                      href={o.href}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-line/70 bg-white px-3.5 py-3 text-[13px] font-medium text-ink transition-colors hover:border-cobalt hover:bg-cobalt/5"
+                    >
+                      <span>{o.label}</span>
+                      <span aria-hidden className="text-cobalt">→</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </CompteCard>
+          );
+        })()}
 
         <CompteCard eyebrow="L'événement" title="BIS 2027">
           <dl>

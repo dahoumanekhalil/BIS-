@@ -2,9 +2,9 @@
 
 import { useActionState } from "react";
 import {
-  submitSpeakerApplication,
-  type SpeakerRegisterState
-} from "@/app/actions/register-speaker";
+  submitContentCreatorApplication,
+  type ContentCreatorRegisterState
+} from "@/app/actions/register-content-creator";
 import {
   ContactFieldset,
   ErrorBanner,
@@ -13,18 +13,26 @@ import {
   TextArea
 } from "@/components/register/form-primitives";
 
-const initial: SpeakerRegisterState = { status: "idle" };
+const initial: ContentCreatorRegisterState = { status: "idle" };
 
-type Init = { phone: string; country: string; organization: string };
+type Init = {
+  phone: string;
+  country: string;
+  organization: string;
+  website: string;
+};
 
-export function SpeakerApplicationForm({
+export function ContentCreatorApplicationForm({
   initial: init,
   needsPhone
 }: {
   initial: Init;
   needsPhone: boolean;
 }) {
-  const [state, formAction] = useActionState(submitSpeakerApplication, initial);
+  const [state, formAction] = useActionState(
+    submitContentCreatorApplication,
+    initial
+  );
   const err = state.status === "error" ? state.fieldErrors ?? {} : {};
 
   return (
@@ -38,85 +46,73 @@ export function SpeakerApplicationForm({
 
       <fieldset className="grid gap-4">
         <legend className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-ink/55">
-          Votre profil
+          Votre univers
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
-            label="Organisation"
-            name="organization"
-            autoComplete="organization"
-            defaultValue={init.organization}
-            error={err.organization}
-            hint="Optionnel"
+            label="Plateforme principale"
+            name="platform"
+            error={err.platform}
+            required
+            hint="Instagram, TikTok, YouTube, LinkedIn, podcast…"
           />
           <Field
-            label="Titre professionnel"
-            name="professionalTitle"
-            error={err.professionalTitle}
-            required
+            label="Taille d'audience"
+            name="audienceSize"
+            error={err.audienceSize}
+            hint="Optionnel — approximative"
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
-            label="LinkedIn"
+            label="Type de contenu"
+            name="contentType"
+            error={err.contentType}
+            hint="Vidéo courte, long format, reportage, podcast… (optionnel)"
+          />
+          <Field
+            label="Marque / pseudo créateur"
+            name="organization"
+            defaultValue={init.organization}
+            error={err.organization}
+            hint="Optionnel"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Site / lien principal"
+            name="website"
+            type="url"
+            defaultValue={init.website}
+            error={err.website}
+            hint="https://…"
+          />
+          <Field
+            label="LinkedIn / autre profil"
             name="linkedin"
             type="url"
             error={err.linkedin}
             hint="https://…"
           />
-          <Field
-            label="Site web"
-            name="website"
-            type="url"
-            error={err.website}
-            hint="https://…"
-          />
         </div>
-        <Field
-          label="Photo (URL)"
-          name="photoUrl"
-          type="url"
-          error={err.photoUrl}
-          hint="Lien vers une photo professionnelle"
-        />
-        <TextArea
-          label="Bio"
-          name="bio"
-          error={err.bio}
-          rows={4}
-          minLength={20}
-          maxLength={2000}
-          required
-        />
-        <Field
-          label="Expertise clé"
-          name="expertise"
-          error={err.expertise}
-          hint="Optionnel — vos domaines d'expertise"
-        />
       </fieldset>
 
       <fieldset className="grid gap-4">
         <legend className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-ink/55">
-          Votre intervention
+          Votre proposition
         </legend>
-        <Field
-          label="Sujet proposé"
-          name="proposedTopic"
-          error={err.proposedTopic}
-          required
-        />
         <TextArea
-          label="Proposition détaillée"
+          label="Proposition"
           name="proposal"
           error={err.proposal}
           rows={6}
           minLength={20}
           maxLength={3000}
           required
+          placeholder="Comment souhaitez-vous couvrir ou amplifier BIS 2027 ?"
         />
         <TextArea
-          label="Message au comité"
+          label="Message à l'équipe éditoriale"
           name="message"
           error={err.message}
           rows={3}
@@ -133,8 +129,8 @@ export function SpeakerApplicationForm({
       />
 
       <p className="text-[12px] text-ink/55">
-        En soumettant, vous acceptez que le comité éditorial BIS étudie votre
-        proposition. Aucune sélection n&apos;est automatique.
+        En soumettant, vous acceptez d&apos;être contacté(e) par l&apos;équipe
+        éditoriale BIS. Aucune accréditation n&apos;est automatique.
       </p>
     </form>
   );

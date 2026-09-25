@@ -2,14 +2,11 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 // Role cards for the /register entry point. Server component — no client
-// interactivity is needed: each role is either a plain link into its
-// dedicated flow, or a disabled "Coming soon" tile.
+// interactivity is needed: each role links into its dedicated flow.
 //
-// Commit 1 status:
-//   • Visitor + Speaker → active links.
-//   • Sponsor / Partner / Content Creator → visible but disabled with a
-//     "Bientôt" badge. Do NOT link to the legacy /register/[slug] flows —
-//     those are being replaced in Commit 2.
+// Commit 2 status: all five roles active. The `available: false` branch
+// stays in the shape so re-enabling the "coming soon" state for a
+// future addition is a one-line change.
 
 type Theme = "cobalt" | "lime";
 
@@ -61,10 +58,10 @@ const ROLES: RoleCard[] = [
     title: "Sponsor",
     description:
       "Associer votre marque à l'écosystème BIS et à l'ambition Algérie 2027.",
-    hint: "Disponible prochainement.",
-    cta: "Bientôt",
-    href: null,
-    available: false
+    hint: "L'équipe partenariats vous répond sous 48 heures.",
+    cta: "Explorer le sponsoring",
+    href: "/register/sponsor",
+    available: true
   },
   {
     slug: "partner",
@@ -74,10 +71,10 @@ const ROLES: RoleCard[] = [
     title: "Partenaire",
     description:
       "Institution, université, ONG ou média — construire une collaboration stratégique.",
-    hint: "Disponible prochainement.",
-    cta: "Bientôt",
-    href: null,
-    available: false
+    hint: "L'équipe partenariats vous répond sous 48 heures.",
+    cta: "Proposer un partenariat",
+    href: "/register/partner",
+    available: true
   },
   {
     slug: "content-creator",
@@ -87,10 +84,10 @@ const ROLES: RoleCard[] = [
     title: "Créateur de contenu",
     description:
       "Amplifier les idées, histoires et impact du sommet auprès de votre audience.",
-    hint: "Disponible prochainement.",
-    cta: "Bientôt",
-    href: null,
-    available: false
+    hint: "Accréditation examinée par l'équipe éditoriale.",
+    cta: "Rejoindre les créateurs",
+    href: "/register/content-creator",
+    available: true
   }
 ];
 
