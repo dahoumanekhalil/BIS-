@@ -8,7 +8,6 @@ const CATEGORIES = [
   { value: "ALL", label: "Toutes catégories" },
   { value: "account", label: "Compte" },
   { value: "profile", label: "Profil" },
-  { value: "payment", label: "Paiement" },
   { value: "checkin", label: "Check-in" },
   { value: "email", label: "Email" },
   { value: "security", label: "Sécurité" }

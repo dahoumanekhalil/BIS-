@@ -27,8 +27,7 @@ import type { ScannerValidationResult } from "@/app/admin/(protected)/scan/[acce
 //   This is not a new authorization system; it is a second transport
 //   into the same access-control engine.
 //
-//   Payment-removal Phase 1 removed the intermediate UNPAID gate
-//   from all three validators; the two paths remain byte-identical.
+//   BIS 2027 is FREE-only; the two paths remain byte-identical.
 //
 // SECURITY ADDITIONS specific to the text-input surface:
 //   • Rate limit runs BEFORE the DB lookup, keyed by
@@ -54,15 +53,9 @@ const TEXT_FAILS_PER_OP = 40;
 
 // Fixed staff-facing French messages. Never expose internal error
 // text, stack traces, or DB identifiers.
-//
-// `UNPAID` is retained for backward compatibility with historical
-// CheckIn rows that recorded `result = UNPAID` before payment was
-// removed as an event-entry prerequisite. The validator no longer
-// produces this outcome.
 const MESSAGES = {
   VALID: "Accès autorisé.",
   ALREADY_CHECKED_IN: "Déjà enregistré.",
-  UNPAID: "Paiement non confirmé.",
   CANCELLED: "Inscription annulée.",
   PA_REVOKED: "Accès refusé.",
   PA_NOT_GRANTED: "Accès non autorisé pour cette salle.",
@@ -284,8 +277,8 @@ async function validate(
   // `main-entrance-validator.ts` / `room-validator.ts` and vice
   // versa — the shared invariants are locked by regression tests.
   //
-  // Payment-removal Phase 1 removed the UNPAID gate that previously
-  // sat between the CANCELLED guard and the PA row check.
+  // BIS 2027 is FREE-only: no payment gate sits between the CANCELLED
+  // guard and the PA row check.
 
   if (participant.status === RegistrationStatus.CANCELLED) {
     await writeCheckInAndAudit({

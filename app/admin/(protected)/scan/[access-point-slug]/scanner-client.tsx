@@ -731,7 +731,6 @@ const STATE_LABEL: Record<ScannerState["kind"], string> = {
 const OUTCOME_TONE: Record<ScannerOutcome, "green" | "red" | "amber"> = {
   VALID: "green",
   ALREADY_CHECKED_IN: "amber",
-  UNPAID: "red",
   CANCELLED: "red",
   PA_REVOKED: "red",
   PA_NOT_GRANTED: "red",
@@ -746,7 +745,6 @@ const OUTCOME_TONE: Record<ScannerOutcome, "green" | "red" | "amber"> = {
 const OUTCOME_TITLE: Record<ScannerOutcome, string> = {
   VALID: "Accès autorisé",
   ALREADY_CHECKED_IN: "Déjà enregistré",
-  UNPAID: "Paiement non confirmé",
   CANCELLED: "Inscription annulée",
   PA_REVOKED: "Accès refusé",
   PA_NOT_GRANTED: "Accès refusé",

@@ -9,7 +9,6 @@ import {
 import { AdminHeader } from "@/components/admin/header";
 import { cn } from "@/lib/utils";
 import { IdentityPanel } from "./identity-panel";
-import { AdmissionPanel } from "./admission-panel";
 import { TeamPanel } from "./team-panel";
 import { ContentPanel } from "./content-panel";
 import { DangerPanel } from "./danger-panel";
@@ -40,12 +39,6 @@ export default async function SpaceDetailPage({
     ? await listAssignableAdmins(space.id)
     : [];
 
-  const admissionLabel =
-    space.admissionMode === "FREE"
-      ? "Gratuit"
-      : space.admissionMode === "PAID"
-        ? "Payant"
-        : "Non défini";
   const typeLabel =
     space.type === "MAIN_ENTRANCE" ? "Entrée principale" : "Salle";
 
@@ -54,7 +47,7 @@ export default async function SpaceDetailPage({
       <AdminHeader
         user={user}
         title={space.name}
-        subtitle={`${typeLabel} · ${admissionLabel}`}
+        subtitle={typeLabel}
       />
 
       <div className="space-y-6 p-6">
@@ -106,17 +99,6 @@ export default async function SpaceDetailPage({
               {space.active ? "Actif" : "Désactivé"}
             </StatusPill>
             <StatusPill tone="cobalt">{typeLabel}</StatusPill>
-            <StatusPill
-              tone={
-                space.admissionMode === "FREE"
-                  ? "green"
-                  : space.admissionMode === "PAID"
-                    ? "cobalt"
-                    : "muted"
-              }
-            >
-              {admissionLabel}
-            </StatusPill>
             <StatusPill tone="muted">
               {space.team.length} membre{space.team.length === 1 ? "" : "s"}{" "}
               d&apos;équipe
@@ -136,15 +118,6 @@ export default async function SpaceDetailPage({
             description: space.description,
             order: space.order,
             slugLocked: space.counts.checkIns > 0
-          }}
-          canManage={canManage}
-        />
-
-        <AdmissionPanel
-          space={{
-            id: space.id,
-            admissionMode: space.admissionMode,
-            type: space.type
           }}
           canManage={canManage}
         />

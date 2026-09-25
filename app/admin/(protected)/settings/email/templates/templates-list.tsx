@@ -12,7 +12,6 @@ const CATEGORY_LABEL: Record<string, string> = {
   auth: "Authentification",
   registration: "Inscription",
   room: "Salles",
-  payment: "Paiement",
   event: "Événement",
   marketing: "Marketing",
   system: "Système",

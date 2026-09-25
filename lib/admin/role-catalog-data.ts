@@ -148,10 +148,10 @@ export const STAFF_MODULES: StaffModule[] = [
       delete: "sponsors.manage"
     }
   },
-  // Payment-removal Phase 2: "Revenue & Finance" catalog entry was
-  // deleted alongside /admin/revenue and the `revenue.view` /
-  // `revenue.reconcile` permissions. Room-payment operations are
-  // still surfaced via the `access` and `payment.*.room` permissions.
+  // Payment-removal: "Revenue & Finance" catalog entry was deleted
+  // alongside /admin/revenue and the `revenue.view` / `revenue.reconcile`
+  // permissions. Room-payment operations were retired when BIS 2027
+  // switched to FREE-only room registration.
   {
     key: "analytics",
     label: "Analytics",

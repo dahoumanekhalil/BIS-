@@ -247,14 +247,7 @@ export async function getAccessPointsWithUsage() {
   }));
 }
 
-// Sub-Phase E — Admin room-registrations panel loader.
-//
-// Payment-removal Phase 3.1 (this commit): trimming the payment-field
-// selects here would cascade into the registrant-detail page, the
-// sub-phase-e tests, and the panel component in the same commit. To
-// keep Phase 3.1 a self-contained checkpoint, the projection is
-// preserved as-is; the payment fields disappear naturally when the
-// schema drops in Phase 3.4 and every consumer is updated then.
+// Admin room-registrations panel loader (FREE-only).
 export async function getRegistrantRoomRegistrations(participantId: string) {
   const [registrations, permissions] = await Promise.all([
     prisma.roomRegistration.findMany({
@@ -263,21 +256,13 @@ export async function getRegistrantRoomRegistrations(participantId: string) {
       select: {
         id: true,
         status: true,
-        priceMinorSnapshot: true,
-        currencySnapshot: true,
-        paymentRef: true,
         registeredAt: true,
-        paidAt: true,
         cancelledAt: true,
-        refundedAt: true,
-        failedAt: true,
-        expiresAt: true,
         accessPoint: {
           select: {
             id: true,
             slug: true,
             name: true,
-            admissionMode: true,
             active: true
           }
         }
@@ -295,15 +280,8 @@ export async function getRegistrantRoomRegistrations(participantId: string) {
   return registrations.map((r) => ({
     id: r.id,
     status: r.status,
-    priceMinorSnapshot: r.priceMinorSnapshot,
-    currencySnapshot: r.currencySnapshot,
-    paymentRef: r.paymentRef,
     registeredAt: r.registeredAt,
-    paidAt: r.paidAt,
     cancelledAt: r.cancelledAt,
-    refundedAt: r.refundedAt,
-    failedAt: r.failedAt,
-    expiresAt: r.expiresAt,
     accessPoint: r.accessPoint,
     access: permMap.get(r.accessPoint.id) ?? null
   }));

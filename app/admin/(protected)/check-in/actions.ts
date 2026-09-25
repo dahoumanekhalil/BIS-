@@ -3,11 +3,7 @@
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/admin/auth";
 import { audit } from "@/lib/admin/audit";
-import {
-  CheckInResult,
-  PaymentStatus,
-  RegistrationStatus
-} from "@prisma/client";
+import { CheckInResult, RegistrationStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export type CheckInResponse =
@@ -30,7 +26,6 @@ export type CheckInResponse =
       result:
         | "UNKNOWN"
         | "WRONG_GATE"
-        | "UNPAID"
         | "CANCELLED"
         | "WRONG_TIME";
       message: string;
@@ -110,20 +105,6 @@ export async function validateTicket({
     };
   }
 
-  if (participant.paymentStatus !== PaymentStatus.PAID) {
-    await logScan(CheckInResult.UNPAID);
-    return {
-      ok: false,
-      result: "UNPAID",
-      message: "Paiement non confirmé.",
-      participant: {
-        firstName: participant.firstName,
-        lastName: participant.lastName,
-        gate: participant.gate
-      }
-    };
-  }
-
   if (participant.gate && participant.gate !== gate) {
     await logScan(CheckInResult.WRONG_GATE);
     return {
@@ -153,10 +134,9 @@ export async function validateTicket({
   // ALREADY_CHECKED_IN.
   //
   // Applied here per the pre-Phase-10 gate B3 = B decision. Every
-  // other manual-flow semantic is preserved byte-for-byte: gate
-  // matching, UNPAID / CANCELLED / WRONG_GATE ordering, revalidatePath
-  // targets, `checkin.scan` AuditLog action, `checkin.validate`
-  // permission.
+  // other manual-flow semantic is preserved: gate matching, CANCELLED /
+  // WRONG_GATE ordering, revalidatePath targets, `checkin.scan`
+  // AuditLog action, `checkin.validate` permission.
   const now = new Date();
   const claim = await prisma.participant.updateMany({
     where: { id: participant.id, checkedInAt: null },

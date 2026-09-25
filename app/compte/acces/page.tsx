@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AccessPointType, AdmissionMode } from "@prisma/client";
+import { AccessPointType } from "@prisma/client";
 import { requireAccount } from "@/lib/account/auth";
 import {
   accessStateFor,
@@ -83,8 +83,8 @@ export default async function CompteAccesPage() {
         <p className="mb-6 text-[13px] leading-relaxed text-ink/65">
           L&apos;entrée principale suit les règles de votre inscription
           BIS 2027. Chaque salle du sommet dispose d&apos;un contrôle
-          d&apos;accès indépendant : certaines salles sont en accès
-          libre, d&apos;autres nécessitent une réservation payante.
+          d&apos;accès indépendant : inscrivez-vous librement aux
+          salles qui vous intéressent.
         </p>
 
         {/* Main entrance(s) — read-only tri-state pill (unchanged) */}
@@ -120,7 +120,7 @@ export default async function CompteAccesPage() {
           </>
         )}
 
-        {/* Rooms — self-service registration controls (Sub-Phase D) */}
+        {/* Rooms — self-service FREE registration controls */}
         {rooms.length > 0 && (
           <>
             <p className="mb-2 mt-6 text-[10.5px] font-bold uppercase tracking-[0.18em] text-ink/50">
@@ -129,32 +129,13 @@ export default async function CompteAccesPage() {
             <div className="grid gap-3">
               {rooms.map((ap) => {
                 const registration = registrationByAp.get(ap.id) ?? null;
-                // Rooms without a configured admission mode are hidden
-                // from the attendee UI — the domain would refuse
-                // registration on them anyway, so there is nothing
-                // actionable to render.
-                if (
-                  ap.admissionMode !== AdmissionMode.FREE &&
-                  ap.admissionMode !== AdmissionMode.PAID
-                ) {
-                  return null;
-                }
                 return (
                   <RoomRegistrationControls
                     key={ap.slug}
                     accessPointId={ap.id}
                     accessPointName={ap.name}
-                    admissionMode={ap.admissionMode}
-                    currentPriceMinor={ap.priceMinor}
-                    currentCurrency={ap.currency}
                     registration={
-                      registration
-                        ? {
-                            status: registration.status,
-                            priceMinorSnapshot: registration.priceMinorSnapshot,
-                            currencySnapshot: registration.currencySnapshot
-                          }
-                        : null
+                      registration ? { status: registration.status } : null
                     }
                   />
                 );

@@ -41,15 +41,9 @@ import type { MainEntranceValidationResult } from "@/app/admin/(protected)/scan/
 // Fixed French messages the operator sees. Kept as data so both the
 // happy and denial paths stay consistent. Never expose internal
 // exception messages, database IDs, or credential material.
-//
-// `UNPAID` is retained on the map for backward compatibility with
-// historical CheckIn rows that recorded `result = UNPAID` before
-// payment was removed as an event-entry prerequisite. The validator
-// no longer produces this outcome — see the eligibility gates below.
 const MESSAGES = {
   VALID: "Accès autorisé.",
   ALREADY_CHECKED_IN: "Déjà enregistré.",
-  UNPAID: "Paiement non confirmé.",
   CANCELLED: "Inscription annulée.",
   PA_REVOKED: "Accès refusé.",
   BADGE_INVALID: "Badge non reconnu.",
@@ -193,10 +187,10 @@ export async function validateMainEntranceQrCore(
   }
 
   // ─── 3. Load participant with the MAIN_ENTRANCE PA row joined. ─
-  // Whitelist select — never fetch passwordHash, session tokens,
-  // reviewNotes, or paymentRef into scope. The narrow projection also
-  // shields the code path from accidentally rendering sensitive
-  // fields via a slip-up later.
+  // Whitelist select — never fetch passwordHash, session tokens, or
+  // reviewNotes into scope. The narrow projection also shields the code
+  // path from accidentally rendering sensitive fields via a slip-up
+  // later.
   const participant = await prisma.participant.findUnique({
     where: { id: verify.participantId },
     select: {
@@ -246,10 +240,8 @@ export async function validateMainEntranceQrCore(
   //     → ALLOW.
   //   granted=false explicitly denies otherwise-eligible attendees.
   //
-  // Payment-removal Phase 1: the `paymentStatus === PAID` gate that
-  // previously sat between CANCELLED and PA_REVOKED has been removed.
-  // Event entry no longer requires payment. See
-  // docs/payment-removal-phase-1-2.md.
+  // BIS 2027 is FREE-only: there is no payment gate between the
+  // CANCELLED guard below and the PA_REVOKED gate.
   //
   // Security note: the CANCELLED guard immediately below and the
   // PARTICIPANT_CANCELLED path returned by verifyBadgeToken above

@@ -40,8 +40,7 @@ export default async function SpacesPage() {
           <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-ink/65">
             Chaque espace correspond à un point d&apos;accès physique du
             sommet. Configurez ici l&apos;identité, l&apos;équipe
-            check-in, la politique d&apos;admission et les activités.
-            Les règles d&apos;accès (paiement, autorisations par salle)
+            check-in et les activités. Les règles d&apos;accès par salle
             restent celles définies par le validateur d&apos;accès.
           </p>
         </section>
@@ -100,18 +99,6 @@ function SpaceCard({
 }: {
   space: Awaited<ReturnType<typeof listSpaces>>[number];
 }) {
-  const admissionLabel =
-    space.admissionMode === "FREE"
-      ? "Gratuit"
-      : space.admissionMode === "PAID"
-        ? "Payant"
-        : "Non défini";
-  const admissionTone =
-    space.admissionMode === "FREE"
-      ? "bg-lime/25 text-ink"
-      : space.admissionMode === "PAID"
-        ? "bg-cobalt/15 text-cobalt"
-        : "bg-ink/10 text-ink/60";
   return (
     <li
       className={cn(
@@ -146,14 +133,6 @@ function SpaceCard({
             )}
           >
             {space.active ? "Actif" : "Désactivé"}
-          </span>
-          <span
-            className={cn(
-              "rounded-full px-2 py-[2px] text-[9.5px] font-bold uppercase tracking-[0.16em]",
-              admissionTone
-            )}
-          >
-            {admissionLabel}
           </span>
         </div>
         <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-[11.5px] text-ink/60">

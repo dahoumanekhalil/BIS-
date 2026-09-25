@@ -465,15 +465,6 @@ function mapCheckIn(
         description: c.reason ?? "Le créneau d'entrée n'est pas actif.",
         status: "failed"
       };
-    case "UNPAID":
-      return {
-        ...base,
-        category: "checkin",
-        action: "checkin.unpaid",
-        title: "Accès refusé · paiement non confirmé",
-        description: "Le paiement n'était pas confirmé au moment du scan.",
-        status: "failed"
-      };
     case "CANCELLED":
       return {
         ...base,

@@ -14,9 +14,9 @@ import {
 //     answers "is authorised", CheckIn answers "actually entered".
 //   • "Unique visitors" = COUNT(DISTINCT participantId) restricted to
 //     result = VALID (and MAIN_ENTRANCE / a given ROOM depending on the
-//     metric). ALREADY_CHECKED_IN / UNPAID / CANCELLED / UNKNOWN are
-//     NEVER counted as visitors — they surface only in operational
-//     rejection breakdowns.
+//     metric). ALREADY_CHECKED_IN / CANCELLED / UNKNOWN / WRONG_GATE /
+//     WRONG_TIME are NEVER counted as visitors — they surface only in
+//     operational rejection breakdowns.
 //   • "Scans" = COUNT(CheckIn) rows matching the where clause. Never
 //     conflated with visitors.
 //   • All projections are whitelist `select`s — no rawToken, no

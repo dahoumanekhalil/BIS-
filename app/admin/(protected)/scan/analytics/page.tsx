@@ -39,8 +39,7 @@ const CHECKIN_RESULTS: readonly CheckInResult[] = [
   "WRONG_GATE",
   "WRONG_TIME",
   "CANCELLED",
-  "UNKNOWN",
-  "UNPAID"
+  "UNKNOWN"
 ] as const;
 
 const PRESET_KEYS = new Set([

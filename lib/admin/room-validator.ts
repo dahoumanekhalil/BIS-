@@ -25,7 +25,7 @@ import type { ScannerValidationResult } from "@/app/admin/(protected)/scan/[acce
 //      `ParticipantAccess.granted === true` for THIS specific room.
 //        • no row      → PA_NOT_GRANTED (default-deny, spec explicit)
 //        • granted=false → PA_REVOKED   (explicit admin denial)
-//        • granted=true  → allowed, subject to payment/eligibility
+//        • granted=true  → allowed, subject to CANCELLED eligibility
 //   4. No `Participant.checkedInAt` mutation. Rooms are independent
 //      per-room accesses; venue entry does not grant room access,
 //      and room entry does not update the main-entrance timestamp.
@@ -38,14 +38,8 @@ import type { ScannerValidationResult } from "@/app/admin/(protected)/scan/[acce
 
 // Fixed French messages the operator sees. Reason strings and outcome
 // codes are internal; the operator sees only these localized strings.
-//
-// `UNPAID` is retained on the map for backward compatibility with
-// historical CheckIn rows that recorded `result = UNPAID` before
-// payment was removed as an event-entry prerequisite. The validator
-// no longer produces this outcome — see the eligibility gates below.
 const MESSAGES = {
   VALID: "Accès autorisé.",
-  UNPAID: "Paiement non confirmé.",
   CANCELLED: "Inscription annulée.",
   PA_REVOKED: "Accès refusé.",
   PA_NOT_GRANTED: "Accès non autorisé pour cette salle.",
@@ -219,11 +213,8 @@ export async function validateRoomQrCore(
   //   granted=false → deny (PA_REVOKED).
   //   granted=true → allow.
   //
-  // Payment-removal Phase 1: the `paymentStatus === PAID` gate that
-  // previously sat between CANCELLED and PA_NOT_GRANTED has been
-  // removed. Room access is now controlled solely by CANCELLED status
-  // and the per-room ParticipantAccess row — the room domain is
-  // already default-deny, so nothing here weakens authorization.
+  // BIS 2027 is FREE-only: room access is controlled solely by
+  // CANCELLED status and the per-room ParticipantAccess row.
 
   if (participant.status === RegistrationStatus.CANCELLED) {
     await writeCheckInAndAudit({

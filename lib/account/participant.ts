@@ -102,12 +102,6 @@ export type ComptePageParticipant = NonNullable<
 
 // Loaded once per request via cache(): all AccessPoints in display order.
 // Server components use this to render the per-participant matrix.
-//
-// Sub-Phase D — the room registration UI needs `admissionMode` +
-// `priceMinor` + `currency` to render the FREE vs PAID controls. These
-// are additive whitelist entries; nothing sensitive is exposed
-// (priceMinor + currency are already visible on the admin spaces page,
-// and the attendee needs the price to make an informed decision).
 export const listAccessPoints = cache(async () => {
   return prisma.accessPoint.findMany({
     where: { active: true },
@@ -116,29 +110,17 @@ export const listAccessPoints = cache(async () => {
       id: true,
       slug: true,
       name: true,
-      type: true,
-      admissionMode: true,
-      priceMinor: true,
-      currency: true
+      type: true
     }
   });
 });
 
-// Sub-Phase D — attendee-facing snapshot of the participant's room
-// registrations. Returned by the compte context alongside the access
-// matrix so the UI can render:
-//   • FREE room, no registration    → "S'inscrire" button
-//   • FREE room, FREE_CONFIRMED     → "Inscrit" state
-//   • PAID room, no registration    → "Réserver — <price>" button
-//   • PAID room, PENDING_PAYMENT    → "En attente de paiement" state
-//   • PAID room, PAID               → "Inscription confirmée" state
-//   • terminal states (CANCELLED / REFUNDED / PAYMENT_FAILED /
-//     EXPIRED) → surfaced with a "Réinscrire" call (REFUNDED excepted
-//     — the state machine refuses reactivation there).
-//
-// Whitelist select — snapshot only. No paymentRef (that is a
-// trusted-provider identifier the attendee has no reason to see), no
-// audit metadata, no admin fields.
+// Attendee-facing snapshot of the participant's FREE room registrations.
+// Returned by the compte context alongside the access matrix so the UI
+// can render:
+//   • no registration    → "S'inscrire" button
+//   • FREE_CONFIRMED     → "Inscrit" state + "Se désinscrire" button
+//   • CANCELLED          → "Non inscrit" state + "S'inscrire" button
 export const listMyRoomRegistrations = cache(
   async (participantId: string) => {
     return prisma.roomRegistration.findMany({
@@ -146,14 +128,8 @@ export const listMyRoomRegistrations = cache(
       select: {
         accessPointId: true,
         status: true,
-        priceMinorSnapshot: true,
-        currencySnapshot: true,
         registeredAt: true,
-        paidAt: true,
-        cancelledAt: true,
-        refundedAt: true,
-        failedAt: true,
-        expiresAt: true
+        cancelledAt: true
       }
     });
   }

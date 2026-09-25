@@ -30,14 +30,12 @@ const RESULT_LABEL: Record<CheckInResult, string> = {
   WRONG_GATE: "Mauvaise porte",
   WRONG_TIME: "Hors créneau",
   CANCELLED: "Annulé",
-  UNKNOWN: "Inconnu / refusé",
-  UNPAID: "Non payé"
+  UNKNOWN: "Inconnu / refusé"
 };
 const RESULT_ORDER: CheckInResult[] = [
   "VALID",
   "ALREADY_CHECKED_IN",
   "UNKNOWN",
-  "UNPAID",
   "CANCELLED",
   "WRONG_GATE",
   "WRONG_TIME"

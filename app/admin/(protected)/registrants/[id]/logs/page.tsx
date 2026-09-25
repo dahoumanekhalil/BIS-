@@ -142,8 +142,6 @@ export default async function ClientLogsPage({
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.18em] text-ink/50">
                 <span>{registrant.tier?.replace("_", " ") ?? "— sans tier"}</span>
                 <span>·</span>
-                <span>{registrant.paymentStatus}</span>
-                <span>·</span>
                 <span>{registrant.status}</span>
                 {registrant.gate && (
                   <>

@@ -26,7 +26,6 @@ export type SpaceListRow = {
   type: AccessPointType;
   active: boolean;
   order: number;
-  admissionMode: "FREE" | "PAID" | null;
   activityCount: number;
   topicCount: number;
   exhibitorCount: number;
@@ -45,7 +44,6 @@ export async function listSpaces(): Promise<SpaceListRow[]> {
       type: true,
       active: true,
       order: true,
-      admissionMode: true,
       activities: true,
       topics: true,
       exhibitors: true,
@@ -65,7 +63,6 @@ export async function listSpaces(): Promise<SpaceListRow[]> {
     type: r.type,
     active: r.active,
     order: r.order,
-    admissionMode: r.admissionMode,
     activityCount: readActivities(r.activities).length,
     topicCount: readTopics(r.topics).length,
     exhibitorCount: readExhibitors(r.exhibitors).length,
@@ -83,7 +80,6 @@ export type SpaceDetail = {
   active: boolean;
   order: number;
   description: string | null;
-  admissionMode: "FREE" | "PAID" | null;
   activities: SpaceActivity[];
   topics: SpaceTopic[];
   exhibitors: SpaceExhibitor[];
@@ -119,7 +115,6 @@ export async function getSpaceBySlug(
       active: true,
       order: true,
       description: true,
-      admissionMode: true,
       activities: true,
       topics: true,
       exhibitors: true,
@@ -155,7 +150,6 @@ export async function getSpaceBySlug(
     active: r.active,
     order: r.order,
     description: r.description,
-    admissionMode: r.admissionMode,
     activities: readActivities(r.activities),
     topics: readTopics(r.topics),
     exhibitors: readExhibitors(r.exhibitors),

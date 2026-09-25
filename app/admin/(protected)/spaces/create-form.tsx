@@ -13,9 +13,6 @@ export function CreateSpaceForm() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [type, setType] = useState<"MAIN_ENTRANCE" | "ROOM">("ROOM");
-  const [admissionMode, setAdmissionMode] = useState<"" | "FREE" | "PAID">(
-    ""
-  );
   const [description, setDescription] = useState("");
   const [order, setOrder] = useState("0");
 
@@ -27,7 +24,6 @@ export function CreateSpaceForm() {
       fd.set("name", name);
       fd.set("slug", slug);
       fd.set("type", type);
-      fd.set("admissionMode", admissionMode);
       fd.set("description", description);
       fd.set("order", order);
       const r = await createSpaceAction(fd);
@@ -103,20 +99,6 @@ export function CreateSpaceForm() {
             Figé après création. Le changer inverserait la logique de
             validation.
           </span>
-        </label>
-        <label className="block text-[10.5px] font-bold uppercase tracking-[0.18em] text-ink/55">
-          Politique d&apos;admission
-          <select
-            value={admissionMode}
-            onChange={(e) =>
-              setAdmissionMode(e.target.value as "" | "FREE" | "PAID")
-            }
-            className="mt-1.5 block w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] font-normal normal-case tracking-normal text-ink outline-none focus:border-cobalt"
-          >
-            <option value="">Non définie</option>
-            <option value="FREE">Gratuit</option>
-            <option value="PAID">Payant</option>
-          </select>
         </label>
         <label className="block text-[10.5px] font-bold uppercase tracking-[0.18em] text-ink/55">
           Ordre d&apos;affichage

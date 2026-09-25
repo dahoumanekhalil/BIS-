@@ -24,7 +24,6 @@ const RESULT_OPTIONS: readonly {
   { value: "", label: "Tous les résultats" },
   { value: "VALID", label: "Validés" },
   { value: "ALREADY_CHECKED_IN", label: "Déjà entrés" },
-  { value: "UNPAID", label: "Impayés" },
   { value: "CANCELLED", label: "Annulés" },
   { value: "WRONG_GATE", label: "Mauvaise porte" },
   { value: "WRONG_TIME", label: "Hors créneau" },

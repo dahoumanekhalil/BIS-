@@ -14,33 +14,17 @@ import { shouldGrant, shouldRevoke } from "./state-machine";
 // same Prisma transaction as the state transition — atomicity is a
 // pre-condition, not a promise this function makes on its own.
 //
-// Invariants (Sub-Phase C §10, §15):
+// Invariants:
 //
-//   • ParticipantAccess.source=ADMIN rows are NEVER read for
-//     mutation. The `updateMany` conditional filters on
-//     `source: REGISTRATION` so a concurrent admin toggling the
-//     same pair cannot be silently overridden. `upsert` is NOT
-//     used here for the grant path because we need the write to
-//     be conditional on source; instead we do:
-//       1. find any existing row (regardless of source)
-//       2. if row exists AND source=ADMIN → do nothing, return
-//       3. if row exists AND source=REGISTRATION → update it
-//       4. if no row → create with source=REGISTRATION
+//   • ParticipantAccess.source=ADMIN rows are NEVER mutated. Admin
+//     intent takes precedence over the registration-owned entitlement.
+//   • Revocation only touches source=REGISTRATION rows.
+//   • Status → action mapping (FREE-only):
+//       FREE_CONFIRMED  →  grant (source=REGISTRATION)
+//       CANCELLED       →  revoke (source=REGISTRATION only)
 //
-//   • Revocation only touches source=REGISTRATION rows. If the
-//     only PA row for the pair is source=ADMIN, revocation is a
-//     no-op — admin intent stands.
-//
-//   • Status → action mapping:
-//       FREE_CONFIRMED, PAID    →  grant (source=REGISTRATION)
-//       REFUNDED, CANCELLED     →  revoke (source=REGISTRATION only)
-//       PENDING_PAYMENT,
-//       PAYMENT_FAILED, EXPIRED →  no-op (never grants access)
-//
-// The service intentionally does NOT emit an audit row here — the
-// caller (state-transition operation) is responsible for exactly
-// one audit event per user-visible transition, and this helper is
-// its private tool.
+// The caller is responsible for exactly one audit event per user-
+// visible transition; this helper is its private tool.
 
 type Tx = Prisma.TransactionClient;
 
@@ -73,10 +57,6 @@ export async function syncRoomAccessEntitlement(
     return await revokeRegistrationOwned(tx, participantId, accessPointId);
   }
 
-  // PENDING_PAYMENT, PAYMENT_FAILED, EXPIRED → nothing to do. The
-  // sync service NEVER pre-emptively creates a denial row for a
-  // registration that is not yet confirmed; that would create
-  // false-negative results in the tri-state UI on /compte.
   return { action: "no-op", reason: "status-does-not-require-sync" };
 }
 
@@ -92,9 +72,6 @@ async function grantRegistrationOwned(
     select: { source: true, granted: true }
   });
 
-  // Admin decision wins. If an admin has a row here (granted OR
-  // revoked), the sync service does not touch it. Registration
-  // grants only materialise where no admin has expressed intent.
   if (existing && existing.source === AccessGrantSource.ADMIN) {
     return { action: "no-op", reason: "admin-owned-grant-preserved" };
   }
@@ -107,11 +84,6 @@ async function grantRegistrationOwned(
     return { action: "no-op", reason: "already-in-target-state" };
   }
 
-  // Either no row (create) or an existing REGISTRATION-owned row
-  // that needs updating back to granted=true (e.g., a prior refund
-  // was later re-registered — the state machine forbids REFUNDED →
-  // active on the RoomRegistration itself, but if a future phase
-  // ever opens that door this write remains safe).
   if (!existing) {
     await tx.participantAccess.create({
       data: {
@@ -136,8 +108,6 @@ async function grantRegistrationOwned(
         grantedAt: new Date(),
         revokedAt: null,
         revokedById: null
-        // source deliberately not written — we already verified it
-        // is REGISTRATION above; the update leaves the enum alone.
       }
     });
   }
@@ -153,11 +123,6 @@ async function revokeRegistrationOwned(
   participantId: string,
   accessPointId: string
 ): Promise<SyncOutcome> {
-  // updateMany with a source predicate is the safest write here:
-  //   • matches only REGISTRATION-owned rows
-  //   • zero rows matched → returns count=0, silent no-op
-  //   • never mutates ADMIN rows even under a concurrent write
-  //   • no race: the DB primary key prevents duplicate rows
   const now = new Date();
   const res = await tx.participantAccess.updateMany({
     where: {
@@ -180,10 +145,6 @@ async function revokeRegistrationOwned(
     };
   }
 
-  // If we didn't touch any row, one of three benign situations
-  // holds: (a) there was no PA row at all (never granted); (b) the
-  // only row is source=ADMIN (immune); (c) a REGISTRATION row exists
-  // but is already granted=false (idempotent).
   const anyAdmin = await tx.participantAccess.findFirst({
     where: {
       participantId,

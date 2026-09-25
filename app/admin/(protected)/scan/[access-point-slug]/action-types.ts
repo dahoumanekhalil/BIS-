@@ -19,8 +19,6 @@
 //   ALREADY_CHECKED_IN       — Phase 10 (main) only: atomic claim lost or
 //                              repeat scan; CheckIn(ALREADY_CHECKED_IN)
 //                              written. NOT produced by the room validator.
-//   UNPAID                   — participant.paymentStatus !== PAID.
-//                              CheckIn(UNPAID) written. No checkedInAt.
 //   CANCELLED                — participant.status === CANCELLED OR
 //                              verifyBadgeToken returned PARTICIPANT_CANCELLED.
 //                              CheckIn(CANCELLED) or AuditLog only, depending
@@ -35,8 +33,8 @@
 //                              default-deny (spec §14). CheckIn(UNKNOWN,
 //                              reason=PA_NOT_GRANTED) written.
 //                              MAIN_ENTRANCE never produces this outcome —
-//                              main is default-allow when payment/eligibility
-//                              are OK and no explicit PA revocation exists.
+//                              main is default-allow when eligibility is OK
+//                              and no explicit PA revocation exists.
 //   BADGE_INVALID            — verifyBadgeToken → INVALID; AuditLog only.
 //   BADGE_REVOKED            — verifyBadgeToken → REVOKED; AuditLog only.
 //   BADGE_EXPIRED            — verifyBadgeToken → EXPIRED; AuditLog only.
@@ -46,7 +44,6 @@
 export type ScannerOutcome =
   | "VALID"
   | "ALREADY_CHECKED_IN"
-  | "UNPAID"
   | "CANCELLED"
   | "PA_REVOKED"
   | "PA_NOT_GRANTED"

@@ -37,13 +37,6 @@ export default async function RegistrantDetail({
   const mayViewAccess = can(user.role, "access.view");
   const mayManageAccess = can(user.role, "access.manage");
   const mayManageBadge = can(user.role, "badge.manage");
-  // Sub-Phase E — Room payment operations. Panel visibility is gated
-  // on the read permission (`access.view`) — anyone who can already see
-  // the access matrix should see the underlying room registrations that
-  // drive it. The per-row action buttons are gated separately by the
-  // finance/access permissions AND the server actions re-check both.
-  const mayConfirmRoomPayment = can(user.role, "payment.confirm.room");
-  const mayRefundRoomPayment = can(user.role, "payment.refund.room");
   const mayCancelRoomRegistration = can(user.role, "access.manage");
   const [accessCtx, roomRegistrations] = await Promise.all([
     mayViewAccess ? getRegistrantAccessContext(id) : Promise.resolve(null),
@@ -52,11 +45,6 @@ export default async function RegistrantDetail({
       : Promise.resolve([])
   ]);
 
-  const dzd = new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "DZD",
-    maximumFractionDigits: 0
-  });
   const dt = (d: Date | null | undefined) =>
     d
       ? new Intl.DateTimeFormat("fr-FR", {
@@ -256,24 +244,12 @@ export default async function RegistrantDetail({
             </div>
           </section>
 
-          {/* Payment */}
+          {/* Statut inscription */}
           <section className="rounded-card border border-line bg-white p-6 lg:col-span-8">
             <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-ink/50">
-              Paiement
+              Statut inscription
             </p>
-            <div className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-              <p className="font-display text-3xl font-black tracking-tight tabular-nums text-ink">
-                {r.paymentAmount != null ? dzd.format(r.paymentAmount) : "—"}
-              </p>
-              <StatusBadge status={r.paymentStatus} />
-              {r.paidAt && (
-                <p className="text-[12px] text-ink/50">
-                  Réglé le {dt(r.paidAt)}
-                </p>
-              )}
-            </div>
             <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-              <Row label="Référence" value={r.paymentRef ?? "—"} />
               <Row label="Statut inscription" value={r.status} />
             </dl>
           </section>
@@ -358,16 +334,12 @@ export default async function RegistrantDetail({
           </div>
         )}
 
-        {/* Sub-Phase E — Room registrations & payment operations. Read
-            gated by access.view; per-action buttons re-check payment.*
-            or access.manage on the server side. Server actions remain
-            authoritative — the panel is UX gating only. */}
+        {/* Room registrations panel. Read gated by access.view; per-row
+            cancel button re-checks access.manage on the server side. */}
         {mayViewAccess && (
           <RoomRegistrationsPanel
             participantId={id}
             registrations={roomRegistrations}
-            canConfirmPayment={mayConfirmRoomPayment}
-            canRefundPayment={mayRefundRoomPayment}
             canCancelRegistration={mayCancelRoomRegistration}
           />
         )}

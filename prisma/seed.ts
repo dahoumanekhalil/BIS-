@@ -4,7 +4,6 @@ import {
   SessionType,
   SessionCategory,
   RegistrationTier,
-  PaymentStatus,
   AdminRole,
   AdminStatus,
   AccessPointType
@@ -361,7 +360,7 @@ async function main() {
   const demoParticipants = firstNames.map((f, i) => {
     const tier = tiers[i % tiers.length];
     const gate = gates[i % gates.length];
-    const paid = i % 3 !== 0;
+    const confirmed = i % 3 !== 0;
     const cancelled = i === 5;
     const email = `${f.toLowerCase()}.${lastNames[i].toLowerCase()}@demo.bis.dz`;
     return {
@@ -374,25 +373,17 @@ async function main() {
       country: i % 4 === 0 ? "Algérie" : ["Maroc", "Sénégal", "France"][i % 3],
       tier,
       gate,
-      paymentStatus: cancelled
-        ? PaymentStatus.REFUNDED
-        : paid
-          ? PaymentStatus.PAID
-          : PaymentStatus.PENDING,
-      paymentAmount: paid ? [80000, 45000, 10000, 25000, 15000][tiers.indexOf(tier)] : null,
-      paymentRef: paid ? `BIS-2027-${(1000 + i).toString().padStart(6, "0")}` : null,
-      paidAt: paid ? new Date(Date.now() - i * 86400000) : null,
       ticketCode: `BIS26-${(1000 + i).toString().padStart(6, "0")}`,
       // New rows use REGISTERED (Commit 1 of the registration refactor).
       // Legacy PENDING is retained on the enum for backward compatibility
       // but no code path — seed included — writes it going forward.
       status: cancelled
         ? ("CANCELLED" as const)
-        : paid
+        : confirmed
           ? ("CONFIRMED" as const)
           : ("REGISTERED" as const),
       // A couple of demo check-ins so the operational dashboard has signal
-      checkedIn: i < 3 && paid
+      checkedIn: i < 3 && confirmed
     };
   });
 

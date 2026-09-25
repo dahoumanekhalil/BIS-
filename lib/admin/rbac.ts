@@ -34,11 +34,9 @@ export const PERMISSIONS = [
   "applications.view",
   "applications.manage",
 
-  // Payment-removal Phase 2: `revenue.view` and `revenue.reconcile`
-  // gated only the deleted `/admin/revenue` page. Their role catalog
-  // entry has been removed. `payment.confirm.room` / `payment.refund.room`
-  // are retained (see block below): the room-registration payment
-  // domain is intentionally out of scope for Phase 2.
+  // Payment-removal: `revenue.view`, `revenue.reconcile`,
+  // `payment.confirm.room`, `payment.refund.room` were retired when
+  // BIS 2027 switched to FREE-only room registration.
 
   "analytics.view",
 
@@ -92,29 +90,7 @@ export const PERMISSIONS = [
   "access.view",
   "access.manage",
   "access.validate.main",
-  "access.validate.room",
-
-  // ─── Room-registration payment boundary (Sub-Phase D) ────────────────
-  // payment.confirm.room  — trusted admin confirmation of a PENDING_PAYMENT
-  //                         room registration → PAID. Held by SUPER_ADMIN,
-  //                         ADMIN, and FINANCE. Distinct from the historic
-  //                         `revenue.reconcile` permission because room
-  //                         registration payments are a separate domain
-  //                         from event-level registration revenue.
-  // payment.refund.room   — trusted admin refund of a PAID room
-  //                         registration → REFUNDED. Same holders as
-  //                         confirm; a refund is a compensating financial
-  //                         action and belongs in the same authorisation
-  //                         circle.
-  //
-  // These permissions gate the admin server actions in
-  // `app/admin/(protected)/registrants/[id]/room-payment-actions.ts`.
-  // Cancellation (PENDING_PAYMENT / FREE_CONFIRMED / PAID → CANCELLED) is
-  // NOT protected by a new permission — it re-uses `access.manage`, which
-  // is the existing permission that already governs a registrant's per-
-  // room access entitlement.
-  "payment.confirm.room",
-  "payment.refund.room"
+  "access.validate.room"
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -124,20 +100,9 @@ const ALL: Permission[] = [...PERMISSIONS];
 // Role → Permissions map. Server-side is the source of truth.
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   SUPER_ADMIN: ALL,
-  // Admin: everything except user/role admin + room payment permissions.
-  // Payment-removal Phase 2 removed the `revenue.*` permissions
-  // outright, so they no longer need to be filtered here. The room
-  // payment permissions remain (§16 — room domain out of scope).
+  // Admin: everything except user/role admin.
   ADMIN: ALL.filter(
-    (p) =>
-      p !== "roles.manage" &&
-      p !== "users.manage" &&
-      // Room payment confirmation/refund is a financial action.
-      // FINANCE + SUPER_ADMIN are the authorised roles; a
-      // RolePermissionOverride can grant ADMIN temporary access if
-      // operational needs require it.
-      p !== "payment.confirm.room" &&
-      p !== "payment.refund.room"
+    (p) => p !== "roles.manage" && p !== "users.manage"
   ),
   // Sales: sees registrants, can edit + email + export, view-only elsewhere.
   SALES: [
@@ -200,13 +165,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "dashboard.view",
     "registrants.view",
     "analytics.view",
-    "audit.view",
-    // Sub-Phase D — FINANCE is the primary holder of the room-payment
-    // confirm/refund boundary. SUPER_ADMIN inherits these via ALL.
-    // ADMIN is explicitly excluded above so a room payment confirm
-    // requires a distinct financial authorisation.
-    "payment.confirm.room",
-    "payment.refund.room"
+    "audit.view"
   ],
   ANALYTICS: ["dashboard.view", "analytics.view", "registrants.view"],
   VIEWER: [

@@ -86,8 +86,7 @@ export const CHECKIN_RESULT_LABEL: Record<CheckInResult, string> = {
   WRONG_GATE: "Porte incorrecte",
   WRONG_TIME: "Hors créneau",
   CANCELLED: "Inscription annulée",
-  UNKNOWN: "Scan non identifié",
-  UNPAID: "Paiement non confirmé"
+  UNKNOWN: "Scan non identifié"
 };
 
 export const CHECKIN_RESULT_TONE: Record<CheckInResult, StatusTone> = {
@@ -96,6 +95,5 @@ export const CHECKIN_RESULT_TONE: Record<CheckInResult, StatusTone> = {
   WRONG_GATE: "danger",
   WRONG_TIME: "danger",
   CANCELLED: "danger",
-  UNKNOWN: "danger",
-  UNPAID: "danger"
+  UNKNOWN: "danger"
 };

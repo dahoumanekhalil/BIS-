@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { AccessPointType, AdmissionMode, Prisma } from "@prisma/client";
+import { AccessPointType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/admin/auth";
 import { audit } from "@/lib/admin/audit";
@@ -48,7 +48,6 @@ const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug: minuscules, chiffres, tirets");
 const orderSchema = z.coerce.number().int().min(0).max(999);
 const typeSchema = z.nativeEnum(AccessPointType);
-const admissionSchema = z.nativeEnum(AdmissionMode).nullable();
 const descriptionSchema = z
   .string()
   .trim()
@@ -85,7 +84,6 @@ export async function createSpaceAction(
       slug: slugSchema,
       type: typeSchema,
       order: orderSchema.default(0),
-      admissionMode: admissionSchema.optional().default(null),
       description: descriptionSchema
     })
     .safeParse({
@@ -93,7 +91,6 @@ export async function createSpaceAction(
       slug: formData.get("slug"),
       type: formData.get("type"),
       order: formData.get("order") ?? "0",
-      admissionMode: formData.get("admissionMode") || null,
       description: formData.get("description")
     });
   if (!parsed.success) {
@@ -103,7 +100,7 @@ export async function createSpaceAction(
         parsed.error.issues[0]?.message ?? "Champ invalide."
     };
   }
-  const { name, slug, type, order, admissionMode, description } = parsed.data;
+  const { name, slug, type, order, description } = parsed.data;
 
   try {
     const created = await prisma.accessPoint.create({
@@ -112,7 +109,6 @@ export async function createSpaceAction(
         slug,
         type,
         order,
-        admissionMode,
         description
       },
       select: { id: true, slug: true }
@@ -122,7 +118,7 @@ export async function createSpaceAction(
       action: "space.create",
       entity: "AccessPoint",
       entityId: created.id,
-      meta: { name, slug, type, order, admissionMode: admissionMode ?? null }
+      meta: { name, slug, type, order }
     });
     revalidate(created.slug);
     return { ok: true, slug: created.slug };
@@ -257,54 +253,6 @@ export async function updateSpaceDescriptionAction(
     entity: "AccessPoint",
     entityId: point.id,
     meta: { hadDescription: !!point.description, hasDescription: !!next }
-  });
-  revalidate(point.slug);
-  return { ok: true };
-}
-
-// ─── update admission mode ───────────────────────────────────────────────
-// Metadata-only. Does NOT change the Phase 11 room validator.
-export async function updateSpaceAdmissionAction(
-  id: string,
-  admissionMode: string | null
-): Promise<Result> {
-  const { user } = await requirePermission("settings.manage");
-  const parsed = z
-    .object({
-      id: idSchema,
-      admissionMode: admissionSchema
-    })
-    .safeParse({
-      id,
-      admissionMode: admissionMode === "" || admissionMode == null
-        ? null
-        : admissionMode
-    });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "" };
-  }
-  const point = await prisma.accessPoint.findUnique({
-    where: { id: parsed.data.id },
-    select: { id: true, slug: true, admissionMode: true }
-  });
-  if (!point) return { ok: false, message: "Espace introuvable." };
-  if (point.admissionMode === parsed.data.admissionMode) {
-    return { ok: true }; // NOOP
-  }
-
-  await prisma.accessPoint.update({
-    where: { id: point.id },
-    data: { admissionMode: parsed.data.admissionMode }
-  });
-  await audit({
-    userId: user.id,
-    action: "space.admission",
-    entity: "AccessPoint",
-    entityId: point.id,
-    meta: {
-      before: point.admissionMode ?? null,
-      after: parsed.data.admissionMode ?? null
-    }
   });
   revalidate(point.slug);
   return { ok: true };
