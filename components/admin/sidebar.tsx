@@ -122,14 +122,9 @@ const GROUPS: NavGroup[] = [
         label: "Sponsors",
         permission: "sponsors.view",
         icon: <Icon d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z" />
-      },
-      {
-        href: "/admin/revenue",
-        label: "Revenue",
-        permission: "revenue.view",
-        soon: true,
-        icon: <Icon d="M4 12h16M6 6h12M6 18h12" />
       }
+      // Revenue entry removed in Payment-removal Phase 2. The page
+      // itself was deleted alongside the payment gate.
     ]
   },
   {

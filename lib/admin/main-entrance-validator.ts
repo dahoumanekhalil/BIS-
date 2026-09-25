@@ -3,7 +3,6 @@ import "server-only";
 import {
   AccessPointType,
   CheckInResult,
-  PaymentStatus,
   RegistrationStatus,
   type AdminUser
 } from "@prisma/client";
@@ -42,6 +41,11 @@ import type { MainEntranceValidationResult } from "@/app/admin/(protected)/scan/
 // Fixed French messages the operator sees. Kept as data so both the
 // happy and denial paths stay consistent. Never expose internal
 // exception messages, database IDs, or credential material.
+//
+// `UNPAID` is retained on the map for backward compatibility with
+// historical CheckIn rows that recorded `result = UNPAID` before
+// payment was removed as an event-entry prerequisite. The validator
+// no longer produces this outcome — see the eligibility gates below.
 const MESSAGES = {
   VALID: "Accès autorisé.",
   ALREADY_CHECKED_IN: "Déjà enregistré.",
@@ -201,7 +205,6 @@ export async function validateMainEntranceQrCore(
       lastName: true,
       tier: true,
       status: true,
-      paymentStatus: true,
       ticketCode: true,
       accessPermissions: {
         where: { accessPointId: point.id },
@@ -238,15 +241,20 @@ export async function validateMainEntranceQrCore(
     tier: participant.tier as string | null
   };
 
-  // ─── 4. Eligibility gates (B1 rule C). ────────────────────────
-  //   PAID_ELIGIBLE = paymentStatus === PAID AND status !== CANCELLED
-  //   AND ParticipantAccess.granted !== false → ALLOW.
-  //   granted=true does NOT waive payment.
+  // ─── 4. Eligibility gates. ────────────────────────────────────
+  //   ELIGIBLE = status !== CANCELLED AND ParticipantAccess.granted !== false
+  //     → ALLOW.
   //   granted=false explicitly denies otherwise-eligible attendees.
-
-  // Preserve the check order used by validateTicket: CANCELLED
-  // takes priority over UNPAID, which takes priority over PA_REVOKED.
-  // The operator sees the most specific reason.
+  //
+  // Payment-removal Phase 1: the `paymentStatus === PAID` gate that
+  // previously sat between CANCELLED and PA_REVOKED has been removed.
+  // Event entry no longer requires payment. See
+  // docs/payment-removal-phase-1-2.md.
+  //
+  // Security note: the CANCELLED guard immediately below and the
+  // PARTICIPANT_CANCELLED path returned by verifyBadgeToken above
+  // remain the only status-based denials — this is intentional and
+  // preserves the "cancelled attendees blocked" invariant.
 
   if (participant.status === RegistrationStatus.CANCELLED) {
     await writeCheckInAndAudit({
@@ -266,27 +274,8 @@ export async function validateMainEntranceQrCore(
     };
   }
 
-  if (participant.paymentStatus !== PaymentStatus.PAID) {
-    await writeCheckInAndAudit({
-      participantId: participant.id,
-      credentialId: verify.credentialId,
-      point,
-      operatorId: user.id,
-      ticketCode: participant.ticketCode ?? "",
-      result: CheckInResult.UNPAID,
-      reason: "UNPAID"
-    });
-    return {
-      ok: false,
-      outcome: "UNPAID",
-      message: MESSAGES.UNPAID,
-      participant: safeParticipant
-    };
-  }
-
   // B1 tri-state: no PA row → treat as no explicit override.
-  // granted=false → explicit deny. granted=true → allow (subject to
-  // the payment/eligibility gates above).
+  // granted=false → explicit deny. granted=true → allow.
   const paRow = participant.accessPermissions[0];
   if (paRow && paRow.granted === false) {
     await writeCheckInAndAudit({

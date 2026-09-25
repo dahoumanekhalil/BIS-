@@ -3,7 +3,6 @@ import "server-only";
 import {
   AccessPointType,
   CheckInResult,
-  PaymentStatus,
   RegistrationStatus,
   type AdminUser
 } from "@prisma/client";
@@ -39,6 +38,11 @@ import type { ScannerValidationResult } from "@/app/admin/(protected)/scan/[acce
 
 // Fixed French messages the operator sees. Reason strings and outcome
 // codes are internal; the operator sees only these localized strings.
+//
+// `UNPAID` is retained on the map for backward compatibility with
+// historical CheckIn rows that recorded `result = UNPAID` before
+// payment was removed as an event-entry prerequisite. The validator
+// no longer produces this outcome — see the eligibility gates below.
 const MESSAGES = {
   VALID: "Accès autorisé.",
   UNPAID: "Paiement non confirmé.",
@@ -177,7 +181,6 @@ export async function validateRoomQrCore(
       lastName: true,
       tier: true,
       status: true,
-      paymentStatus: true,
       ticketCode: true,
       accessPermissions: {
         where: { accessPointId: point.id },
@@ -212,10 +215,15 @@ export async function validateRoomQrCore(
 
   // ─── 4. Eligibility gates (spec §14, strict). ──────────────────
   //   CANCELLED → deny, DEDICATED reason.
-  //   UNPAID    → deny.
   //   No PA row → deny (PA_NOT_GRANTED) — rooms are default-deny.
   //   granted=false → deny (PA_REVOKED).
   //   granted=true → allow.
+  //
+  // Payment-removal Phase 1: the `paymentStatus === PAID` gate that
+  // previously sat between CANCELLED and PA_NOT_GRANTED has been
+  // removed. Room access is now controlled solely by CANCELLED status
+  // and the per-room ParticipantAccess row — the room domain is
+  // already default-deny, so nothing here weakens authorization.
 
   if (participant.status === RegistrationStatus.CANCELLED) {
     await writeCheckInAndAudit({
@@ -231,24 +239,6 @@ export async function validateRoomQrCore(
       ok: false,
       outcome: "CANCELLED",
       message: MESSAGES.CANCELLED,
-      participant: safeParticipant
-    };
-  }
-
-  if (participant.paymentStatus !== PaymentStatus.PAID) {
-    await writeCheckInAndAudit({
-      participantId: participant.id,
-      credentialId: verify.credentialId,
-      point,
-      operatorId: user.id,
-      ticketCode: participant.ticketCode ?? "",
-      result: CheckInResult.UNPAID,
-      reason: "UNPAID"
-    });
-    return {
-      ok: false,
-      outcome: "UNPAID",
-      message: MESSAGES.UNPAID,
       participant: safeParticipant
     };
   }

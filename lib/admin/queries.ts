@@ -114,11 +114,13 @@ export async function getAdminOverview() {
   };
 }
 
+// Payment-removal Phase 2: the `payment` filter has been removed from
+// the admin registrants list. `paymentRef` is also no longer used as
+// a search key. The Prisma columns still exist as legacy storage.
 export type RegistrantFilters = {
   q?: string;
   tier?: RegistrationTier | "ALL";
   status?: RegistrationStatus | "ALL";
-  payment?: PaymentStatus | "ALL";
   gate?: string | "ALL";
   page?: number;
   pageSize?: number;
@@ -137,14 +139,11 @@ export async function listRegistrants(filters: RegistrantFilters) {
       { firstName: { contains: filters.q, mode: "insensitive" } },
       { lastName: { contains: filters.q, mode: "insensitive" } },
       { email: { contains: filters.q, mode: "insensitive" } },
-      { ticketCode: { contains: filters.q, mode: "insensitive" } },
-      { paymentRef: { contains: filters.q, mode: "insensitive" } }
+      { ticketCode: { contains: filters.q, mode: "insensitive" } }
     ];
   }
   if (filters.tier && filters.tier !== "ALL") where.tier = filters.tier;
   if (filters.status && filters.status !== "ALL") where.status = filters.status;
-  if (filters.payment && filters.payment !== "ALL")
-    where.paymentStatus = filters.payment;
   if (filters.gate && filters.gate !== "ALL") where.gate = filters.gate;
 
   const [items, total] = await Promise.all([
@@ -161,8 +160,6 @@ export async function listRegistrants(filters: RegistrantFilters) {
         phone: true,
         tier: true,
         gate: true,
-        paymentStatus: true,
-        paymentAmount: true,
         status: true,
         checkedInAt: true,
         createdAt: true,

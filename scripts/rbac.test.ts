@@ -109,11 +109,14 @@ describe("ADMIN", () => {
     }
   });
 
-  test("still lacks roles.manage / users.manage / revenue.*", () => {
+  test("still lacks roles.manage / users.manage", () => {
     assert.equal(can(AdminRole.ADMIN, "roles.manage"), false);
     assert.equal(can(AdminRole.ADMIN, "users.manage"), false);
-    assert.equal(can(AdminRole.ADMIN, "revenue.view"), false);
-    assert.equal(can(AdminRole.ADMIN, "revenue.reconcile"), false);
+    // Payment-removal Phase 2: `revenue.view` and `revenue.reconcile`
+    // were removed from the PERMISSIONS list. `can()` returns `false`
+    // for any string not in ROLE_PERMISSIONS, so the historical
+    // negative assertions are covered without asserting on strings
+    // that no longer exist as valid Permission values.
   });
 });
 

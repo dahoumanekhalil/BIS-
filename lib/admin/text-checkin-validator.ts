@@ -3,7 +3,6 @@ import "server-only";
 import {
   AccessPointType,
   CheckInResult,
-  PaymentStatus,
   RegistrationStatus,
   type AdminUser
 } from "@prisma/client";
@@ -23,10 +22,13 @@ import type { ScannerValidationResult } from "@/app/admin/(protected)/scan/[acce
 //   `Participant.checkinCode` on the normalized user-supplied code,
 //   whereas the QR path resolves via `verifyBadgeToken`.
 //
-//   All downstream rules — CANCELLED → UNPAID → PA row → atomic
-//   claim (main) or ROOM_ENTRY (room) — MUST remain identical. This
-//   is not a new authorization system; it is a second transport
+//   All downstream rules — CANCELLED → PA row → atomic claim (main)
+//   or ROOM_ENTRY (room) — MUST remain identical to the QR path.
+//   This is not a new authorization system; it is a second transport
 //   into the same access-control engine.
+//
+//   Payment-removal Phase 1 removed the intermediate UNPAID gate
+//   from all three validators; the two paths remain byte-identical.
 //
 // SECURITY ADDITIONS specific to the text-input surface:
 //   • Rate limit runs BEFORE the DB lookup, keyed by
@@ -52,6 +54,11 @@ const TEXT_FAILS_PER_OP = 40;
 
 // Fixed staff-facing French messages. Never expose internal error
 // text, stack traces, or DB identifiers.
+//
+// `UNPAID` is retained for backward compatibility with historical
+// CheckIn rows that recorded `result = UNPAID` before payment was
+// removed as an event-entry prerequisite. The validator no longer
+// produces this outcome.
 const MESSAGES = {
   VALID: "Accès autorisé.",
   ALREADY_CHECKED_IN: "Déjà enregistré.",
@@ -236,7 +243,6 @@ async function validate(
       lastName: true,
       tier: true,
       status: true,
-      paymentStatus: true,
       ticketCode: true,
       accessPermissions: {
         where: { accessPointId: point.id },
@@ -272,11 +278,14 @@ async function validate(
 
   // ─── Step 4: eligibility gates (IDENTICAL to Phase 10/11) ──
   //
-  // These four branches are the exact same order, condition, and
-  // audit reason strings as the QR validators. Duplication is
-  // deliberate (see file header). Any change here MUST be mirrored
-  // in `main-entrance-validator.ts` / `room-validator.ts` and vice
+  // These branches are the exact same order, condition, and audit
+  // reason strings as the QR validators. Duplication is deliberate
+  // (see file header). Any change here MUST be mirrored in
+  // `main-entrance-validator.ts` / `room-validator.ts` and vice
   // versa — the shared invariants are locked by regression tests.
+  //
+  // Payment-removal Phase 1 removed the UNPAID gate that previously
+  // sat between the CANCELLED guard and the PA row check.
 
   if (participant.status === RegistrationStatus.CANCELLED) {
     await writeCheckInAndAudit({
@@ -291,22 +300,6 @@ async function validate(
       ok: false,
       outcome: "CANCELLED",
       message: MESSAGES.CANCELLED,
-      participant: safeParticipant
-    };
-  }
-  if (participant.paymentStatus !== PaymentStatus.PAID) {
-    await writeCheckInAndAudit({
-      participantId: participant.id,
-      point,
-      operatorId: user.id,
-      ticketCode: participant.ticketCode ?? "",
-      result: CheckInResult.UNPAID,
-      reason: "UNPAID"
-    });
-    return {
-      ok: false,
-      outcome: "UNPAID",
-      message: MESSAGES.UNPAID,
       participant: safeParticipant
     };
   }

@@ -6,7 +6,6 @@ import { EmptyState } from "@/components/admin/ui";
 import { RegistrationsFilterBar } from "./filter-bar";
 import { RegistrantRow } from "./registrant-row";
 import type {
-  PaymentStatus,
   RegistrationStatus,
   RegistrationTier
 } from "@prisma/client";
@@ -16,11 +15,13 @@ export const dynamic = "force-dynamic";
 export default async function RegistrantsPage({
   searchParams
 }: {
+  // Payment-removal Phase 2: the `payment` searchParam is no longer
+  // read here. A legacy bookmark carrying `?payment=…` is silently
+  // ignored — the filter is not applied and no error is shown.
   searchParams: Promise<{
     q?: string;
     tier?: string;
     status?: string;
-    payment?: string;
     gate?: string;
     page?: string;
     deleted?: string;
@@ -33,7 +34,6 @@ export default async function RegistrantsPage({
     q: sp.q?.trim() || undefined,
     tier: (sp.tier as RegistrationTier | "ALL") || "ALL",
     status: (sp.status as RegistrationStatus | "ALL") || "ALL",
-    payment: (sp.payment as PaymentStatus | "ALL") || "ALL",
     gate: (sp.gate as string | "ALL") || "ALL",
     page: sp.page ? Math.max(1, Number(sp.page)) : 1,
     pageSize: 20

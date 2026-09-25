@@ -10,7 +10,8 @@
 //   1. valid + PAID + no PA row              → VALID
 //   2. valid + PAID + PA granted=true        → VALID
 //   3. valid + PAID + PA granted=false       → PA_REVOKED, no checkedInAt
-//   4. valid + UNPAID                        → UNPAID
+//   4. valid + UNPAID + REGISTERED           → VALID
+//                                             (Payment-removal Phase 1)
 //   5. valid + CANCELLED                     → CANCELLED
 //   6. valid + already checked in            → ALREADY_CHECKED_IN, no re-write
 //   7. revoked badge                         → BADGE_REVOKED, AuditLog only
@@ -313,8 +314,14 @@ describe("MAIN_ENTRANCE — denials with participant resolved", () => {
     await cleanupFixture(p.id);
   });
 
-  test("UNPAID → UNPAID CheckIn + no checkedInAt", async () => {
-    const p = await makeParticipant({ paymentStatus: PaymentStatus.UNPAID });
+  // Payment-removal Phase 1: event entry no longer requires
+  // paymentStatus === PAID. A REGISTERED-but-UNPAID participant with a
+  // valid badge must scan through with VALID.
+  test("UNPAID + REGISTERED → VALID (payment removed)", async () => {
+    const p = await makeParticipant({
+      paymentStatus: PaymentStatus.UNPAID,
+      status: RegistrationStatus.REGISTERED
+    });
     const raw = await issueActive(p.id);
 
     const r = await validateMainEntranceQrCore({
@@ -322,18 +329,38 @@ describe("MAIN_ENTRANCE — denials with participant resolved", () => {
       slug: "main",
       rawToken: raw
     });
-    assert.equal(r.outcome, "UNPAID");
+    assert.equal(r.outcome, "VALID");
     const row = await prisma.checkIn.findFirst({
       where: { participantId: p.id, accessPointId: mainPointId }
     });
-    assert.equal(row?.result, CheckInResult.UNPAID);
-    assert.equal(row?.reason, "UNPAID");
+    assert.equal(row?.result, CheckInResult.VALID);
+    assert.equal(row?.reason, "FIRST_SCAN");
+    // The unpaid participant IS the one who scanned through, so
+    // checkedInAt MUST now be populated.
     const after = await prisma.participant.findUnique({
       where: { id: p.id },
       select: { checkedInAt: true }
     });
-    assert.equal(after?.checkedInAt, null);
+    assert.notEqual(after?.checkedInAt, null);
 
+    await cleanupFixture(p.id);
+  });
+
+  // Regression: no path should still produce CheckInResult.UNPAID as
+  // an outcome. If a future change reintroduces the payment gate,
+  // this test should be replaced deliberately, not silently deleted.
+  test("no scan path produces UNPAID (regression)", async () => {
+    const p = await makeParticipant({
+      paymentStatus: PaymentStatus.UNPAID,
+      status: RegistrationStatus.REGISTERED
+    });
+    const raw = await issueActive(p.id);
+    const r = await validateMainEntranceQrCore({
+      user: { id: operatorId },
+      slug: "main",
+      rawToken: raw
+    });
+    assert.notEqual(r.outcome, "UNPAID");
     await cleanupFixture(p.id);
   });
 

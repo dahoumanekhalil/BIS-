@@ -13,7 +13,9 @@
 //   1. valid + PAID + PA granted=true       → VALID (CheckIn(VALID))
 //   2. valid + PAID + PA granted=false      → PA_REVOKED
 //   3. valid + PAID + no PA row             → PA_NOT_GRANTED (default-deny)
-//   4. valid + UNPAID + PA granted=true     → UNPAID (payment overrides PA)
+//   4. valid + UNPAID + PA granted=true     → VALID (Payment-removal Phase 1)
+//                                              plus regression: UNPAID + no PA row
+//                                              → PA_NOT_GRANTED (default-deny)
 //   5. valid + CANCELLED (verify path)      → CANCELLED, AuditLog only
 //   6. valid + CANCELLED (status path)      → CheckIn(CANCELLED)
 //   7. two consecutive VALID scans          → TWO CheckIn(VALID) rows
@@ -291,8 +293,15 @@ describe("ROOM — denials", () => {
     await cleanupFixture(p.id);
   });
 
-  test("UNPAID + PA granted=true → UNPAID (payment gate wins)", async () => {
-    const p = await makeParticipant({ paymentStatus: PaymentStatus.UNPAID });
+  // Payment-removal Phase 1: room entry no longer requires PAID. An
+  // UNPAID participant with an explicit ParticipantAccess.granted=true
+  // row for this room MUST scan through with VALID. The room domain
+  // remains default-deny — PA_NOT_GRANTED / PA_REVOKED are unchanged.
+  test("UNPAID + PA granted=true → VALID (payment removed)", async () => {
+    const p = await makeParticipant({
+      paymentStatus: PaymentStatus.UNPAID,
+      status: RegistrationStatus.REGISTERED
+    });
     await grantRoom(p.id, room1PointId);
     const raw = await issueActive(p.id);
     const r = await validateRoomQrCore({
@@ -300,12 +309,29 @@ describe("ROOM — denials", () => {
       slug: "room-01",
       rawToken: raw
     });
-    assert.equal(r.outcome, "UNPAID");
+    assert.equal(r.outcome, "VALID");
     const row = await prisma.checkIn.findFirst({
       where: { participantId: p.id, accessPointId: room1PointId }
     });
-    assert.equal(row?.result, CheckInResult.UNPAID);
-    assert.equal(row?.reason, "UNPAID");
+    assert.equal(row?.result, CheckInResult.VALID);
+    assert.equal(row?.reason, "ROOM_ENTRY");
+    await cleanupFixture(p.id);
+  });
+
+  // Regression: UNPAID + no PA row must still be denied, but with
+  // PA_NOT_GRANTED (default-deny), NOT UNPAID.
+  test("UNPAID + no PA row → PA_NOT_GRANTED (still default-deny)", async () => {
+    const p = await makeParticipant({
+      paymentStatus: PaymentStatus.UNPAID,
+      status: RegistrationStatus.REGISTERED
+    });
+    const raw = await issueActive(p.id);
+    const r = await validateRoomQrCore({
+      user: { id: operatorId },
+      slug: "room-01",
+      rawToken: raw
+    });
+    assert.equal(r.outcome, "PA_NOT_GRANTED");
     await cleanupFixture(p.id);
   });
 

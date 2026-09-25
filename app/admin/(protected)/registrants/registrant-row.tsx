@@ -7,6 +7,10 @@ import { cn } from "@/lib/utils";
 
 const HOVER_DELAY_MS = 1000;
 
+// Payment-removal Phase 2: `paymentStatus` and `paymentAmount` are no
+// longer surfaced in the registrants list row. The Prisma columns are
+// still populated by legacy data + the admin edit form, but the list
+// UI no longer renders them.
 export type RegistrantRowData = {
   id: string;
   firstName: string;
@@ -15,19 +19,12 @@ export type RegistrantRowData = {
   phone: string | null;
   tier: string | null;
   gate: string | null;
-  paymentStatus: string;
-  paymentAmount: number | null;
   status: string;
   checkedInAt: Date | null;
   createdAt: Date;
   ticketCode: string | null;
 };
 
-const dzd = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "DZD",
-  maximumFractionDigits: 0
-});
 const dt = (d: Date) =>
   new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
@@ -61,8 +58,6 @@ export function RegistrantRow({ r }: { r: RegistrantRowData }) {
     setOpen(false);
   }
 
-  const paid = r.paymentStatus === "PAID";
-
   return (
     <tr
       onMouseEnter={scheduleOpen}
@@ -73,16 +68,6 @@ export function RegistrantRow({ r }: { r: RegistrantRowData }) {
     >
       <td className="relative px-4 py-3">
         <div className="flex items-center gap-2">
-          {paid && (
-            <span
-              aria-label="Paiement confirmé"
-              title="Paiement confirmé"
-              className="relative flex h-2 w-2 flex-none"
-            >
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-lime shadow-[0_0_8px_rgba(184,230,46,0.6)]" />
-            </span>
-          )}
           <div className="min-w-0">
             <Link
               href={`/admin/registrants/${r.id}`}
@@ -140,7 +125,6 @@ export function RegistrantRow({ r }: { r: RegistrantRowData }) {
 }
 
 function HoverCard({ open, r }: { open: boolean; r: RegistrantRowData }) {
-  const paid = r.paymentStatus === "PAID";
   return (
     <div
       role="tooltip"
@@ -164,14 +148,6 @@ function HoverCard({ open, r }: { open: boolean; r: RegistrantRowData }) {
               </p>
             </div>
             <div className="flex items-center gap-1.5">
-              {paid && (
-                <span
-                  className="relative flex h-1.5 w-1.5"
-                  aria-label="Paiement confirmé"
-                >
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-lime" />
-                </span>
-              )}
               <TierBadge tier={r.tier} />
             </div>
           </div>
@@ -181,14 +157,6 @@ function HoverCard({ open, r }: { open: boolean; r: RegistrantRowData }) {
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3">
           <Row label="Téléphone" value={r.phone || "—"} />
           <Row label="Ticket" value={r.ticketCode ?? "—"} mono />
-          <Row
-            label="Paiement"
-            value={
-              r.paymentAmount != null
-                ? `${dzd.format(r.paymentAmount)} · ${r.paymentStatus}`
-                : r.paymentStatus
-            }
-          />
           <Row label="Gate" value={r.gate ?? "—"} />
           <Row label="Statut" value={r.status} />
           <Row

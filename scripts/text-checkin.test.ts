@@ -258,8 +258,14 @@ describe("text validator — MAIN_ENTRANCE happy path", () => {
 });
 
 describe("text validator — MAIN_ENTRANCE denials", () => {
-  test("UNPAID + valid code → UNPAID", async () => {
-    const p = await makeParticipant({ paymentStatus: PaymentStatus.UNPAID });
+  // Payment-removal Phase 1: event entry no longer requires payment.
+  // A REGISTERED-but-UNPAID participant with a valid text code must
+  // scan through with VALID.
+  test("UNPAID + REGISTERED + valid code → VALID (payment removed)", async () => {
+    const p = await makeParticipant({
+      paymentStatus: PaymentStatus.UNPAID,
+      status: RegistrationStatus.REGISTERED
+    });
     const code = await ensureCheckinCode(p.id);
     const r = await validateMainEntranceTextCore({
       user: { id: operatorId },
@@ -267,7 +273,7 @@ describe("text validator — MAIN_ENTRANCE denials", () => {
       code,
       ip: null
     });
-    assert.equal(r.outcome, "UNPAID");
+    assert.equal(r.outcome, "VALID");
     await cleanup(p.id);
   });
 

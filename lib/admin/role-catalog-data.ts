@@ -148,16 +148,10 @@ export const STAFF_MODULES: StaffModule[] = [
       delete: "sponsors.manage"
     }
   },
-  {
-    key: "revenue",
-    label: "Revenue & Finance",
-    description: "Encaissements, remboursements, réconciliation.",
-    category: "Business",
-    ops: {
-      read: "revenue.view",
-      update: "revenue.reconcile"
-    }
-  },
+  // Payment-removal Phase 2: "Revenue & Finance" catalog entry was
+  // deleted alongside /admin/revenue and the `revenue.view` /
+  // `revenue.reconcile` permissions. Room-payment operations are
+  // still surfaced via the `access` and `payment.*.room` permissions.
   {
     key: "analytics",
     label: "Analytics",

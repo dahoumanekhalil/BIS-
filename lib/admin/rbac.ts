@@ -34,8 +34,11 @@ export const PERMISSIONS = [
   "applications.view",
   "applications.manage",
 
-  "revenue.view",
-  "revenue.reconcile",
+  // Payment-removal Phase 2: `revenue.view` and `revenue.reconcile`
+  // gated only the deleted `/admin/revenue` page. Their role catalog
+  // entry has been removed. `payment.confirm.room` / `payment.refund.room`
+  // are retained (see block below): the room-registration payment
+  // domain is intentionally out of scope for Phase 2.
 
   "analytics.view",
 
@@ -121,23 +124,18 @@ const ALL: Permission[] = [...PERMISSIONS];
 // Role → Permissions map. Server-side is the source of truth.
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   SUPER_ADMIN: ALL,
-  // Admin: everything except money section (revenue) + no user/role admin.
-  // SECURITY NOTE: Admin keeps registrants.export + analytics.view. When
-  // those screens are implemented, they must NOT include payment amounts,
-  // paymentRef, or aggregated revenue figures unless the caller also holds
-  // revenue.view. Enforce at the query layer, not the UI.
+  // Admin: everything except user/role admin + room payment permissions.
+  // Payment-removal Phase 2 removed the `revenue.*` permissions
+  // outright, so they no longer need to be filtered here. The room
+  // payment permissions remain (§16 — room domain out of scope).
   ADMIN: ALL.filter(
     (p) =>
       p !== "roles.manage" &&
       p !== "users.manage" &&
-      p !== "revenue.view" &&
-      p !== "revenue.reconcile" &&
-      // Sub-Phase D — room payment confirmation/refund is a
-      // financial action. ADMIN does not hold `revenue.reconcile`, so
-      // by the same principle it does not hold the room payment
-      // confirm/refund permissions. FINANCE + SUPER_ADMIN are the
-      // authorised roles; a RolePermissionOverride can grant ADMIN
-      // temporary access if operational needs require it.
+      // Room payment confirmation/refund is a financial action.
+      // FINANCE + SUPER_ADMIN are the authorised roles; a
+      // RolePermissionOverride can grant ADMIN temporary access if
+      // operational needs require it.
       p !== "payment.confirm.room" &&
       p !== "payment.refund.room"
   ),
@@ -200,8 +198,6 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   ],
   FINANCE: [
     "dashboard.view",
-    "revenue.view",
-    "revenue.reconcile",
     "registrants.view",
     "analytics.view",
     "audit.view",

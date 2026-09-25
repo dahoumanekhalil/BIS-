@@ -8,8 +8,10 @@ const TIERS = ["ALL", "VVIP", "VIP", "CONTENT_CREATOR", "IMPACT_MAKER"];
 // PENDING kept for legacy rows that predate the RegistrationStatus refactor;
 // new rows land in REGISTERED.
 const STATUSES = ["ALL", "REGISTERED", "CONFIRMED", "CANCELLED", "PENDING"];
-const PAYMENTS = ["ALL", "UNPAID", "PENDING", "PAID", "REFUNDED", "FAILED"];
 const GATES = ["ALL", "Gate A", "Gate B", "Gate C", "Gate D"];
+// Payment-removal Phase 2: the `payment` filter dropdown has been
+// removed from the toolbar. The Prisma column still exists for
+// legacy storage but is no longer surfaced in the list UI.
 
 const TIER_LABEL: Record<string, string> = {
   ALL: "Tous",
@@ -53,7 +55,7 @@ export function RegistrationsFilterBar({ total }: { total: number }) {
     });
   }
 
-  const activeFilters = ["tier", "status", "payment", "gate"].filter((k) =>
+  const activeFilters = ["tier", "status", "gate"].filter((k) =>
     params.get(k)
   ).length;
 
@@ -92,12 +94,6 @@ export function RegistrationsFilterBar({ total }: { total: number }) {
           onChange={(v) => updateParam("status", v)}
           label="Statut"
           options={STATUSES}
-        />
-        <Select
-          value={params.get("payment") ?? "ALL"}
-          onChange={(v) => updateParam("payment", v)}
-          label="Paiement"
-          options={PAYMENTS}
         />
         <Select
           value={params.get("gate") ?? "ALL"}
