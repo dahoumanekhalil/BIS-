@@ -794,6 +794,69 @@ model EmailMessage {
   @@index([status, nextAttemptAt])
 }
 
+// Admin-authored email templates. A DB row with `isActive=true` overrides
+// the same-key entry in the code catalog (`lib/admin/email-templates.ts`)
+// at send time — see `lib/email/queue.ts::queueTemplatedEmail` and
+// `lib/email/templates/service.ts::resolveTemplate`. Deactivating a row
+// silently falls back to the code catalog, so the application never
+// sends an empty email because an admin messed up.
+//
+// SECURITY: `htmlBody` is sanitized both on-write (in the admin action)
+// and on-render (in `db-render.ts`). See the security-reviewer note in
+// `service.ts`.
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  // Stable identifier the caller uses to look up the template
+  // (`templateKey` on `queueTemplatedEmail`). Must match a code-catalog
+  // key when overriding a system template, or be a fresh string for a
+  // custom template.
+  key         String   @unique
+  name        String
+  description String?
+  // Free-form category ("auth", "registration", "room", …). Used for
+  // grouping in the admin list; the send-time resolver never reads it.
+  category    String
+  subject     String
+  preheader   String?
+  htmlBody    String   @db.Text
+  textBody    String   @db.Text
+  useHeader   Boolean  @default(true)
+  useFooter   Boolean  @default(true)
+  // System-flagged rows are protected from deletion — deactivating them
+  // is the safe operational off-switch. A DB row that overrides a
+  // code-catalog template inherits this flag on create.
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(false)
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  versions EmailTemplateVersion[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+// Append-only snapshot of the PREVIOUS content of an `EmailTemplate` row
+// captured on every update via `updateTemplateAndVersion` — powers the
+// "restore version" flow in the admin editor.
+model EmailTemplateVersion {
+  id         String        @id @default(cuid())
+  templateId String
+  template   EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  version    Int
+  subject    String
+  preheader  String?
+  htmlBody   String        @db.Text
+  textBody   String        @db.Text
+  createdBy  String?
+  createdAt  DateTime      @default(now())
+
+  @@unique([templateId, version])
+  @@index([templateId])
+}
+
 model RolePermissionOverride {
   id         String    @id @default(cuid())
   role       AdminRole
