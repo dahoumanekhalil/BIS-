@@ -9,8 +9,6 @@ import { EMAIL_TEMPLATES } from "../lib/admin/email-templates";
 const REQUIRED_KEYS = [
   // pre-existing
   "welcome",
-  "payment-confirmed",
-  "payment-reminder",
   "ticket-delivered",
   "gate-assigned",
   "day-before",
@@ -29,9 +27,6 @@ const REQUIRED_KEYS = [
   "auth-password-reset",
   "auth-password-changed",
   "room-registration-free-confirmed",
-  "room-registration-pending-payment",
-  "room-registration-paid",
-  "room-registration-refunded",
   "room-registration-cancelled",
   "contact-form-relay",
   "admin-test-email"
