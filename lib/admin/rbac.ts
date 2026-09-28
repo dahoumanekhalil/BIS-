@@ -90,7 +90,51 @@ export const PERMISSIONS = [
   "access.view",
   "access.manage",
   "access.validate.main",
-  "access.validate.room"
+  "access.validate.room",
+
+  // ─── Backup / Restore subsystem (Phase 6) ────────────────────────────
+  //
+  // Six discrete verbs so an operator can be granted low-risk observation
+  // (`backup.view`) without also gaining destructive powers. Every mutating
+  // server action under app/admin/(protected)/backups/ starts with
+  // `await requirePermission("backup.<verb>")` — the UI's visibility of
+  // these entries is UX only.
+  //
+  //   backup.view      — read the backup dashboard and list, view manifest
+  //                      metadata and per-model row counts of any backup.
+  //                      Non-destructive.
+  //   backup.create    — trigger a manual encrypted database dump. Safe:
+  //                      the operation is additive (creates a new file);
+  //                      cannot damage existing data.
+  //   backup.verify    — re-run the Phase 5 verifier against a backup and
+  //                      persist the result. Non-destructive.
+  //   backup.delete    — delete a specific backup's on-disk artefacts.
+  //                      Restricted because retention-floor drift or an
+  //                      accidental delete of the sole known-good backup
+  //                      is an operational hazard.
+  //   backup.restore   — HIGHEST PRIVILEGE. Kicks off a destructive
+  //                      restore. Requires (in the server action) both a
+  //                      typed confirmation phrase AND password re-auth
+  //                      (see Phase 7). SUPER_ADMIN only in the baseline
+  //                      role map; other roles must be granted via a
+  //                      RolePermissionOverride if operations require it.
+  //   backup.settings  — modify BackupSchedule (frequency, retention,
+  //                      enabled). Distinct from `settings.manage`
+  //                      because rotating a Postgres backup schedule
+  //                      needs a narrower blast radius than the general
+  //                      "settings.manage" scope.
+  //
+  // Baseline role assignments (see ROLE_PERMISSIONS below):
+  //   SUPER_ADMIN → all six
+  //   ADMIN       → view + create + verify (NOT delete/restore/settings)
+  //   others      → none by default; grant via RolePermissionOverride if
+  //                 operations delegates.
+  "backup.view",
+  "backup.create",
+  "backup.verify",
+  "backup.delete",
+  "backup.restore",
+  "backup.settings"
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -98,12 +142,26 @@ export type Permission = (typeof PERMISSIONS)[number];
 const ALL: Permission[] = [...PERMISSIONS];
 
 // Role → Permissions map. Server-side is the source of truth.
+// Permissions that ADMIN (non-super) does NOT automatically hold. These
+// are elevated operations that would give an admin the ability to alter
+// the RBAC map itself, replace application data, or reconfigure the
+// backup subsystem — SUPER_ADMIN-only by baseline.
+const ADMIN_DENIED: Permission[] = [
+  "roles.manage",
+  "users.manage",
+  // Backup subsystem: ADMIN sees + creates + verifies backups. Deletion,
+  // schedule changes, and (especially) restore require SUPER_ADMIN
+  // baseline. Operators who need to delegate can grant these via a
+  // RolePermissionOverride row without touching this table.
+  "backup.delete",
+  "backup.restore",
+  "backup.settings"
+];
+
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   SUPER_ADMIN: ALL,
-  // Admin: everything except user/role admin.
-  ADMIN: ALL.filter(
-    (p) => p !== "roles.manage" && p !== "users.manage"
-  ),
+  // Admin: everything except user/role admin AND the destructive backup verbs.
+  ADMIN: ALL.filter((p) => !ADMIN_DENIED.includes(p)),
   // Sales: sees registrants, can edit + email + export, view-only elsewhere.
   SALES: [
     "dashboard.view",

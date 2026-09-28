@@ -427,16 +427,16 @@ model EmailVerificationToken {
 }
 
 model PasswordResetToken {
-  id         String      @id @default(cuid())
-  userId     String
-  user       AccountUser @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash  String      @unique
-  createdAt  DateTime    @default(now())
-  expiresAt  DateTime
-  usedAt     DateTime?
+  id        String      @id @default(cuid())
+  userId    String
+  user      AccountUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String      @unique
+  createdAt DateTime    @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
   // Best-effort audit metadata. Client IP is truncated at the caller
   // (see lib/account/password-reset.ts) before it lands here.
-  requestIp  String?
+  requestIp String?
 
   @@index([userId])
   @@index([expiresAt])
@@ -530,9 +530,9 @@ model AccessPoint {
   //   activities: [{ title: string, description?: string }]
   //   topics:     [{ label: string }]
   //   exhibitors: [{ name: string, website?: string, description?: string }]
-  activities Json?
-  topics     Json?
-  exhibitors Json?
+  activities  Json?
+  topics      Json?
+  exhibitors  Json?
 
   permissions       ParticipantAccess[]
   checkIns          CheckIn[]
@@ -614,12 +614,12 @@ model BadgeCredential {
 model ParticipantAccess {
   participantId String
   accessPointId String
-  granted       Boolean            @default(true)
+  granted       Boolean           @default(true)
   grantedById   String?
-  grantedAt     DateTime           @default(now())
+  grantedAt     DateTime          @default(now())
   revokedAt     DateTime?
   revokedById   String?
-  source        AccessGrantSource  @default(ADMIN)
+  source        AccessGrantSource @default(ADMIN)
 
   participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   accessPoint AccessPoint @relation(fields: [accessPointId], references: [id], onDelete: Cascade)
@@ -666,6 +666,13 @@ model AdminUser {
   checkIns        CheckIn[]
   speaker         Speaker?
   teamMemberships AccessPointTeamMember[]
+
+  // Backup subsystem — see the BACKUP & RESTORE section at the end of
+  // this file. All three relations are `onDelete: SetNull` so purging an
+  // admin never drops backup audit history.
+  backupsCreated  Backup[]           @relation("BackupCreatedBy")
+  backupsVerified Backup[]           @relation("BackupVerifiedBy")
+  restores        RestoreOperation[]
 
   @@index([role])
   @@index([status])
@@ -910,4 +917,184 @@ model RoomRegistration {
   @@index([accessPointId, status])
   @@index([participantId])
   @@index([status])
+}
+
+// --------------------------- BACKUP & RESTORE ---------------------------
+//
+// Encrypted, authenticated, integrity-verified full database backups.
+//
+// SECURITY NOTES:
+//   * The backup ciphertext lives on disk at BACKUP_STORAGE_DIR (never
+//     committed, never inside the app tree). Only sha256(ciphertext) and
+//     metadata are persisted here.
+//   * The encryption key (BACKUP_ENCRYPTION_KEY) is loaded from env only;
+//     the DB never sees it. Rows in this table are safe to leak — they
+//     do NOT allow decryption of the backup file.
+//   * Restore is a destructive administrative operation. Every path that
+//     mutates a Backup or RestoreOperation row MUST call
+//     requirePermission("backup.<verb>") first (see lib/admin/rbac.ts).
+//   * A Backup row can only ever be marked COMPLETED after the write
+//     succeeded AND the on-disk file's sha256 matches contentSha256 AND
+//     the GCM tag verified. Any earlier state is treated as suspect.
+
+enum BackupStatus {
+  PENDING // row created, staging file being written
+  RUNNING // dump in progress
+  COMPLETED // dump finished, integrity hash recorded, promoted from staging
+  VERIFIED // most recent explicit verification succeeded (superset of COMPLETED)
+  FAILED // create OR verify failed — row kept for audit
+  DELETED // retention cleanup removed the on-disk file (row kept for audit)
+  MISSING // an integrity sweep observed the file to be absent
+}
+
+enum BackupKind {
+  MANUAL // admin clicked "create backup now"
+  SCHEDULED // scheduler tick triggered it
+  SAFETY // auto-taken immediately before a restore operation
+}
+
+enum RestoreStatus {
+  INITIATED // user requested; preflight not started
+  PREFLIGHT // verifying selected backup + schema compat
+  RUNNING // destructive apply in progress inside a transaction
+  COMPLETED // finished, all sessions invalidated
+  FAILED // aborted; DB rolled back or safety backup used
+  ROLLED_BACK // safety backup restored after a failed apply
+}
+
+// A Backup row is the durable metadata of one attempt at creating an
+// encrypted database dump. It never contains secrets or plaintext data.
+// The row's status is the authoritative signal — never trust the mere
+// presence of a file on disk.
+model Backup {
+  id                String       @id @default(cuid())
+  status            BackupStatus @default(PENDING)
+  kind              BackupKind
+  startedAt         DateTime     @default(now())
+  completedAt       DateTime?
+  sizeBytes         BigInt?
+  // Server-derived relative filename (`<id>.bin`) under BACKUP_STORAGE_DIR.
+  // NEVER accepts client input. NEVER contains an absolute path or a slash.
+  // Cap at 64 chars — cuid is 25, extension is 4, gives generous headroom
+  // while forbidding a bug that ever tries to persist an attacker-influenced
+  // path.
+  fileName          String?      @db.VarChar(64)
+  // sha256 of the on-disk ciphertext file. Verified independently of the
+  // GCM tag so a truncated file is detected before decryption is attempted.
+  contentSha256     String?
+  // sha256 of the manifest JSON text as written (fields + HMAC included).
+  manifestSha256    String?
+  // sha256 of prisma/schema.prisma at backup time — enables compatibility
+  // check at restore time.
+  schemaSha256      String
+  appVersion        String
+  formatVersion     String       @default("1")
+  encryptionVersion String       @default("v1")
+  // Per-model row counts captured at dump time; used to detect a
+  // corrupted or partial file during verification.
+  rowCounts         Json?
+  errorMessage      String?
+  // Admin who triggered a manual backup. NULL for SCHEDULED and SAFETY.
+  // SetNull on delete: preserves backup audit history if the admin is
+  // ever removed.
+  createdById       String?
+  createdBy         AdminUser?   @relation("BackupCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  verifiedAt        DateTime?
+  verifiedById      String?
+  verifiedBy        AdminUser?   @relation("BackupVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  // Result of the most recent verify call: OK | MISSING | SIZE_MISMATCH |
+  // SHA_MISMATCH | TAMPERED | MANIFEST_HMAC_FAIL | ROW_COUNT_MISMATCH |
+  // SCHEMA_MISMATCH — kept as a free-form string so future verifier
+  // versions can extend the vocabulary without a schema migration.
+  verifyResult      String?
+
+  // Restore operations that used THIS backup as the source-of-truth being
+  // restored. Named relation so it is distinct from `safetyBackupFor` below.
+  restores        RestoreOperation[] @relation("RestoreSource")
+  // Restore operations that took THIS backup as a pre-restore safety
+  // snapshot. Nullable FK on the RestoreOperation side (SetNull) so a
+  // retention prune of the safety backup preserves the restore audit row
+  // while surfacing "safety snapshot is no longer available" via NULL.
+  safetyBackupFor RestoreOperation[] @relation("RestoreSafety")
+
+  @@index([status])
+  @@index([startedAt])
+  @@index([kind])
+  @@index([status, startedAt])
+}
+
+// Every restore attempt — successful or not — leaves a permanent audit
+// row. safetyBackupId points at the Backup row of the snapshot taken
+// immediately before the destructive apply (see lib/backup/restore.ts).
+model RestoreOperation {
+  id             String        @id @default(cuid())
+  // Explicit `Restrict`: a Backup that has restore history CANNOT be
+  // deleted (protects incident-review integrity). Retention prune must
+  // check for referencing RestoreOperation rows before deleting the
+  // Backup row — see lib/backup/retention.ts.
+  backupId       String
+  backup         Backup        @relation("RestoreSource", fields: [backupId], references: [id], onDelete: Restrict)
+  status         RestoreStatus @default(INITIATED)
+  startedAt      DateTime      @default(now())
+  completedAt    DateTime?
+  // The admin who initiated the restore. Restore requires
+  // `backup.restore` + a password re-auth (see lib/backup/restore.ts);
+  // the row therefore always has a real actor. Explicit `Restrict` so
+  // the row is preserved even if the admin account is later purged —
+  // critical for post-incident review.
+  initiatedById  String
+  initiatedBy    AdminUser     @relation(fields: [initiatedById], references: [id], onDelete: Restrict)
+  // If a pre-restore safety snapshot succeeded, this points at it.
+  // SetNull on delete: a retention prune of the safety backup nulls the
+  // pointer but preserves the RestoreOperation row (audit trail intact,
+  // "safety snapshot no longer available" visible via NULL).
+  safetyBackupId String?
+  safetyBackup   Backup?       @relation("RestoreSafety", fields: [safetyBackupId], references: [id], onDelete: SetNull)
+  errorMessage   String?
+  meta           Json?
+
+  @@index([backupId])
+  @@index([startedAt])
+  @@index([initiatedById])
+  @@index([safetyBackupId])
+}
+
+// Single-row configuration table (id is a hardcoded literal) governing
+// automated backup behaviour. Disabled by default — the operator must
+// explicitly opt-in via the settings UI or a seed script.
+model BackupSchedule {
+  id             String   @id @default("singleton")
+  enabled        Boolean  @default(false)
+  // 1..168 (1h..1 week). Enforced by the settings server action, not the DB.
+  frequencyHours Int      @default(24)
+  // Keep the N most recent COMPLETED / VERIFIED backups. Enforced with a
+  // floor of 1 in the retention code — regardless of misconfiguration,
+  // retention MUST NEVER leave zero valid backups.
+  retentionCount Int      @default(14)
+  // Maximum age (days) of a retained backup. Independent of retentionCount:
+  // a backup older than this is prunable EVEN IF the count is under the
+  // ceiling — UNLESS its deletion would drop us below the retention floor.
+  // 0 disables the age-based rule. Enforced in lib/backup/retention.ts.
+  retentionAgeDays Int    @default(90)
+  updatedAt      DateTime @updatedAt
+  updatedById    String?
+
+  // ─── Scheduler state (Phase 8) ────────────────────────────────────────
+  // Persisted so a duplicate cron POST is idempotent: the tick service
+  // compares (lastRunAt + frequencyHours) against `now()` under a
+  // Postgres advisory lock; a same-second retry sees `lastRunAt=now` and
+  // treats itself as "not due", never creating a duplicate backup.
+  // `lastRunOutcome` distinguishes SUCCESS / FAILURE / SKIPPED so the
+  // dashboard can surface schedule health without reading the audit log.
+  lastRunAt        DateTime? // last time the tick actually attempted a backup
+  // "OK" | "RUNNING" | "FAILED_DUMP" | "FAILED_VERIFY" | "FAILED_INTERNAL_STUCK"
+  //   | "SKIPPED_LOCKED" | "SKIPPED_NOT_DUE" | "SKIPPED_DISABLED" | "SKIPPED_ACTIVE" | "INTERNAL"
+  // Kept as a free-form string (not an enum) so future outcomes can be
+  // added without a migration. See lib/backup/scheduler.ts::SchedulerOutcome.
+  lastRunOutcome   String?
+  lastRunBackupId  String?   // Backup row created by the last run (SUCCESS or FAILURE)
+  lastRunError     String?   // sanitized failure code, never a raw exception
+  // Bounded catch-up: after an outage, at most ONE backup is created per
+  // tick — never a burst of N=missed-intervals. Documented in
+  // BACKUP_RESTORE_IMPLEMENTATION_PLAN.md.
 }
