@@ -98,6 +98,34 @@ export async function requirePermission(perm: Permission): Promise<CurrentAdmin>
   return admin;
 }
 
+/**
+ * Delete every AdminSession for `userId` EXCEPT the one whose raw cookie
+ * token is presented by the caller (typically read from the request via
+ * `readSessionToken`). Used by the "change password" flow so a legitimate
+ * password change locks out any hijacked / shared-workstation sessions
+ * while keeping the actor's own tab logged in.
+ *
+ * `currentRawToken` may be null (caller has no cookie) — in that case
+ * every session for the user is deleted. Returns the number of rows
+ * removed.
+ *
+ * Hashing is done via the private `hashToken` inside this module so the
+ * raw token never leaves the auth layer.
+ */
+export async function revokeOtherAdminSessions(
+  userId: string,
+  currentRawToken: string | null
+): Promise<number> {
+  const currentHash = currentRawToken ? hashToken(currentRawToken) : null;
+  const where = currentHash
+    ? { userId, NOT: { tokenHash: currentHash } }
+    : { userId };
+  const { count } = await prisma.adminSession
+    .deleteMany({ where })
+    .catch(() => ({ count: 0 }));
+  return count;
+}
+
 // Phase 15 — accepts the raw cookie token and hashes internally before
 // looking up / deleting. Returns the deleted session's userId so
 // callers can audit `auth.logout` (or the speaker equivalent) after
