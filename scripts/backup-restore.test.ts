@@ -804,6 +804,12 @@ describe("runRestore — destructive round-trip (opt-in)", async () => {
         const { runBackupDump } = await import("../lib/backup/dump");
         const source = await runBackupDump({ kind: "MANUAL", client: prisma });
 
+        // Regression: a Drive replication row (FK Restrict to Backup, excluded
+        // from dumps) must not make the Backup wipe fail with APPLY_FAILED.
+        await prisma.backupReplication.create({
+          data: { backupId: source.backupId, destination: "GOOGLE_DRIVE" }
+        });
+
         // Insert an AuditLog marker to detect that restore removed our
         // post-backup changes.
         const marker = await prisma.auditLog.create({

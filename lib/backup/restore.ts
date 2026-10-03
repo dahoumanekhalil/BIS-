@@ -666,6 +666,12 @@ async function applyRestoreDestructively(
   preserved: Preserved
 ): Promise<void> {
   // ── Wipe ────────────────────────────────────────────────────────────
+  // BackupReplication is excluded from dumps (EXCLUDED_MODELS) but its FK to
+  // Backup is ON DELETE RESTRICT, so it must go first or the Backup wipe
+  // below aborts with a Postgres FK violation (APPLY_FAILED). The Drive
+  // worker's self-heal scan re-enqueues replication rows after a restore.
+  await tx.backupReplication.deleteMany({});
+
   // DELETE FROM per model in DROP_ORDER (reverse of MODEL_ORDER). Explicit
   // and safe — TRUNCATE CASCADE would silently touch tables outside our
   // list. We rely on Prisma's model → underlying table mapping via the

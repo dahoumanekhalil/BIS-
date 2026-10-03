@@ -8,6 +8,8 @@ export const PERMISSIONS = [
   "registrants.edit",
   "registrants.delete",
   "registrants.export",
+  // Bulk CSV download of the full registrant list (PII). SUPER_ADMIN only.
+  "registrants.export.csv",
   "registrants.email",
 
   "checkin.view",
@@ -207,6 +209,10 @@ const ALL: Permission[] = [...PERMISSIONS];
 const ADMIN_DENIED: Permission[] = [
   "roles.manage",
   "users.manage",
+  // Mass export of attendee personal data — SUPER_ADMIN only. The export
+  // route additionally hard-requires role === SUPER_ADMIN, so a DB override
+  // cannot widen access to other roles.
+  "registrants.export.csv",
   // Backup subsystem: ADMIN sees + creates + verifies backups. Deletion,
   // schedule changes, and (especially) restore require SUPER_ADMIN
   // baseline. Operators who need to delegate can grant these via a

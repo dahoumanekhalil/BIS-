@@ -68,6 +68,7 @@ export function RestoreWizard({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [phrase, setPhrase] = useState("");
+  const [phraseLocked, setPhraseLocked] = useState(true);
   const [password, setPassword] = useState("");
   const [force, setForce] = useState(false);
   const [verifyResult, setVerifyResult] = useState<
@@ -240,7 +241,11 @@ export function RestoreWizard({
               <button
                 type="button"
                 disabled={!verifyResult || verifyResult.ok === false}
-                onClick={() => setStep(3)}
+                onClick={() => {
+                  setPhrase("");
+                  setPhraseLocked(true);
+                  setStep(3);
+                }}
                 className="inline-flex items-center rounded-btn bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-50"
               >
                 Continuer →
@@ -300,13 +305,34 @@ export function RestoreWizard({
                 </p>
                 <input
                   type="text"
+                  name="restore-confirmation-phrase"
                   value={phrase}
+                  placeholder={`RESTORE ${selectedId.slice(0, 8)}`}
+                  readOnly={phraseLocked}
+                  onFocus={() => setPhraseLocked(false)}
                   onChange={(e) => setPhrase(e.target.value)}
                   autoComplete="off"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore
+                  data-form-type="other"
                   className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-1.5 font-mono text-[13px]"
                   required
                 />
+                {phrase.length > 0 &&
+                  phrase !== `RESTORE ${selectedId.slice(0, 8)}` && (
+                    <p className="mt-1 text-[11.5px] text-amber-800">
+                      La phrase ne correspond pas encore exactement.{" "}
+                      <span className="font-mono">
+                        {describePhraseMismatch(
+                          phrase,
+                          `RESTORE ${selectedId.slice(0, 8)}`
+                        )}
+                      </span>
+                    </p>
+                  )}
               </label>
 
               <label className="block text-[12.5px]">
@@ -318,9 +344,10 @@ export function RestoreWizard({
                 </p>
                 <input
                   type="password"
+                  name="restore-admin-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px]"
                   required
                 />
@@ -427,6 +454,17 @@ function StepRow({
       {label}
     </li>
   );
+}
+
+function describePhraseMismatch(typed: string, expected: string): string {
+  const a = Array.from(typed);
+  const b = Array.from(expected);
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i += 1;
+  const head = `Saisi : ${a.length} car. · attendu : ${b.length} car.`;
+  if (i >= a.length) return `${head} · la saisie est trop courte.`;
+  const cp = a[i].codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0");
+  return `${head} · 1er écart à la position ${i + 1} (caractère U+${cp}).`;
 }
 
 function formatSize(size: string | null): string {

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/admin/auth";
-import { listRegistrants } from "@/lib/admin/queries";
+import {
+  listRegistrants,
+  MAX_REGISTRANT_EXPORT_ROWS
+} from "@/lib/admin/queries";
 import { AdminHeader } from "@/components/admin/header";
 import { EmptyState } from "@/components/admin/ui";
 import { RegistrationsFilterBar } from "./filter-bar";
@@ -42,6 +45,16 @@ export default async function RegistrantsPage({
   const { items, total, page, pageSize } = await listRegistrants(filters);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  // UI gate only — /admin/registrants/export re-checks SUPER_ADMIN server-side.
+  const canExportCsv = user.role === "SUPER_ADMIN";
+  const exportParams = new URLSearchParams();
+  if (filters.q) exportParams.set("q", filters.q);
+  if (filters.tier !== "ALL") exportParams.set("tier", filters.tier);
+  if (filters.status !== "ALL") exportParams.set("status", filters.status);
+  if (filters.gate !== "ALL") exportParams.set("gate", filters.gate);
+  const exportQuery = exportParams.toString();
+  const exportHref = `/admin/registrants/export${exportQuery ? `?${exportQuery}` : ""}`;
+
   return (
     <>
       <AdminHeader user={user} title="Registrants" subtitle="Attendees" />
@@ -57,6 +70,29 @@ export default async function RegistrantsPage({
         )}
 
         <RegistrationsFilterBar total={total} />
+
+        {canExportCsv && (
+          <div className="flex items-center justify-between gap-3 rounded-card border border-line bg-white px-4 py-3">
+            <p className="text-[12px] text-ink/60">
+              Exporte les {total.toLocaleString("fr-FR")} inscrits
+              correspondant aux filtres actuels (données personnelles —
+              Super Admin uniquement, action journalisée).
+              {total > MAX_REGISTRANT_EXPORT_ROWS && (
+                <span className="mt-1 block font-semibold text-amber-800">
+                  Limite de {MAX_REGISTRANT_EXPORT_ROWS.toLocaleString("fr-FR")}{" "}
+                  lignes : affinez les filtres pour tout exporter.
+                </span>
+              )}
+            </p>
+            <a
+              href={exportHref}
+              download
+              className="inline-flex shrink-0 items-center gap-2 rounded-btn bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink/85"
+            >
+              Exporter CSV
+            </a>
+          </div>
+        )}
 
         <div className="overflow-visible rounded-card border border-line bg-white">
           <div className="overflow-x-auto overflow-y-visible">

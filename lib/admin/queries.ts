@@ -109,10 +109,7 @@ export type RegistrantFilters = {
   pageSize?: number;
 };
 
-export async function listRegistrants(filters: RegistrantFilters) {
-  const page = Math.max(1, filters.page ?? 1);
-  const pageSize = Math.min(100, Math.max(5, filters.pageSize ?? 20));
-
+function buildRegistrantsWhere(filters: RegistrantFilters) {
   const where: NonNullable<
     Parameters<typeof prisma.participant.findMany>[0]
   >["where"] = {};
@@ -128,6 +125,58 @@ export async function listRegistrants(filters: RegistrantFilters) {
   if (filters.tier && filters.tier !== "ALL") where.tier = filters.tier;
   if (filters.status && filters.status !== "ALL") where.status = filters.status;
   if (filters.gate && filters.gate !== "ALL") where.gate = filters.gate;
+  return where;
+}
+
+export const MAX_REGISTRANT_EXPORT_ROWS = 50_000;
+
+/**
+ * Full (unpaginated) registrant list for the SUPER_ADMIN CSV export. Uses the
+ * same filters as the list page. Whitelist select — `checkinCode` (a check-in
+ * credential), `accountUserId` and other internals are deliberately NOT
+ * selected. Bounded by MAX_REGISTRANT_EXPORT_ROWS; `truncated` tells the
+ * caller more rows matched.
+ */
+export async function listRegistrantsForExport(filters: RegistrantFilters) {
+  const rows = await prisma.participant.findMany({
+    where: buildRegistrantsWhere(filters),
+    orderBy: { createdAt: "desc" },
+    take: MAX_REGISTRANT_EXPORT_ROWS + 1,
+    select: {
+      ticketCode: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      country: true,
+      organization: true,
+      jobTitle: true,
+      registrationType: true,
+      profile: true,
+      participationChoice: true,
+      companyIndustry: true,
+      companyWebsite: true,
+      companySize: true,
+      tier: true,
+      status: true,
+      gate: true,
+      checkedInAt: true,
+      checkedInGate: true,
+      createdAt: true
+    }
+  });
+  const truncated = rows.length > MAX_REGISTRANT_EXPORT_ROWS;
+  return {
+    rows: truncated ? rows.slice(0, MAX_REGISTRANT_EXPORT_ROWS) : rows,
+    truncated
+  };
+}
+
+export async function listRegistrants(filters: RegistrantFilters) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(100, Math.max(5, filters.pageSize ?? 20));
+
+  const where = buildRegistrantsWhere(filters);
 
   const [items, total] = await Promise.all([
     prisma.participant.findMany({
