@@ -19,12 +19,16 @@ import {
 } from "./crypto";
 import {
   openPublishedReadStream,
+  openStagedReadStream,
   readPublishedManifest,
+  readStagedManifest,
   statPublishedBackup,
+  statStagedPair,
   publishedBackupExists,
   assertValidBackupId,
   BackupStorageError
 } from "./storage";
+import type { ReadStream } from "fs";
 import {
   parseAndVerifyManifest,
   ManifestParseError,
@@ -151,6 +155,30 @@ export type VerifyFailureCode =
 
 export type VerifyOutcome = "VERIFIED" | "FAILED";
 
+/**
+ * Where the verifier should read the bin + manifest from. Default is
+ * the `published/` directory (the historical behaviour — every legacy
+ * caller). Layer I adds a `staging` variant so the remote-restore
+ * pipeline can verify a Drive-downloaded copy without first promoting
+ * it into `published/`. See plan §N.2.
+ *
+ * `staging` MUST supply an absolute `dir` derived server-side via
+ * `storage.assertStagingSubdir(...)`. Filenames are validated by the
+ * storage helpers the same way `published/` filenames are.
+ *
+ * Additive extension: the option is optional and defaults to
+ * `{ kind: "published" }`, preserving the exact behaviour every
+ * existing caller relies on.
+ */
+export type VerifyBackupSource =
+  | { kind: "published" }
+  | {
+      kind: "staging";
+      dir: string;
+      binName: string;
+      manifestName: string;
+    };
+
 export interface VerifyBackupOptions {
   backupId: string;
   /** Prisma client override (tests). */
@@ -164,10 +192,23 @@ export interface VerifyBackupOptions {
   /**
    * Persist the verification result to the Backup row (verifiedAt,
    * verifiedById, verifyResult, status). Default: true.
+   *
+   * When `source.kind === "staging"`, persistence is DISABLED regardless
+   * of this flag: a Drive-sourced staging verify is a preflight for
+   * remote restore (§N.3), and its outcome must never mutate an
+   * existing local Backup row's status — that is the local subsystem's
+   * exclusive concern. Layer I's remote-restore pipeline is the sole
+   * component that may INSERT a new row after a successful staging
+   * verify, and it does so explicitly under its own logic.
    */
   persist?: boolean;
   /** AdminUser.id to record as `verifiedById` when persisting. */
   verifiedById?: string | null;
+  /**
+   * Where the bin + manifest live. Defaults to `{ kind: "published" }`.
+   * See `VerifyBackupSource`.
+   */
+  source?: VerifyBackupSource;
 }
 
 export interface VerifyResult {
@@ -211,6 +252,82 @@ export class BackupVerifyError extends Error {
   }
 }
 
+// ─── Artifact accessor abstraction (Layer I §N.2) ────────────────────────
+//
+// Every I/O touchpoint the verifier uses on the .bin + manifest goes
+// through one of these adapters. Two implementations:
+//   * `publishedAccessor(backupId)` — reads from `<root>/published/`,
+//     the legacy behaviour used by every caller before Layer I.
+//   * `stagedAccessor(dir, binName, manifestName)` — reads from an
+//     isolated staging subdir supplied by the remote-restore pipeline.
+//
+// Neither accessor performs traversal validation itself — the storage
+// helpers do that on every call, so `dir` and filenames are already
+// safe by the time they reach the accessor.
+
+type ArtifactAccessor = {
+  exists(): Promise<boolean>;
+  stat(): Promise<{ binSize: number; manifestSize: number; binMtime: Date }>;
+  readManifest(): Promise<Buffer>;
+  streamSha256(): Promise<string>;
+  readRange(start: number, length: number): Promise<Buffer>;
+  openReadStream(opts?: { start?: number; end?: number }): ReadStream;
+  /** Debug label — never contains a secret. */
+  sourceKind: "published" | "staging";
+};
+
+function publishedAccessor(backupId: string): ArtifactAccessor {
+  return {
+    sourceKind: "published",
+    exists: () => publishedBackupExists(backupId),
+    stat: () => statPublishedBackup(backupId),
+    readManifest: () => readPublishedManifest(backupId),
+    streamSha256: () => streamSha256FromStream(openPublishedReadStream(backupId)),
+    readRange: (start, length) =>
+      readRangeFromStream(
+        openPublishedReadStream(backupId, {
+          start,
+          end: start + length - 1
+        }),
+        length,
+        start
+      ),
+    openReadStream: (opts) => openPublishedReadStream(backupId, opts)
+  };
+}
+
+function stagedAccessor(
+  dir: string,
+  binName: string,
+  manifestName: string
+): ArtifactAccessor {
+  return {
+    sourceKind: "staging",
+    async exists() {
+      try {
+        await statStagedPair(dir, binName, manifestName);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    stat: () => statStagedPair(dir, binName, manifestName),
+    readManifest: () => readStagedManifest(dir, manifestName),
+    streamSha256: () =>
+      streamSha256FromStream(openStagedReadStream(dir, binName)),
+    readRange: (start, length) =>
+      readRangeFromStream(
+        openStagedReadStream(dir, binName, {
+          start,
+          end: start + length - 1
+        }),
+        length,
+        start
+      ),
+    openReadStream: (opts) => openStagedReadStream(dir, binName, opts)
+  };
+}
+
 // ─── Orchestrator ───────────────────────────────────────────────────────────
 
 /**
@@ -223,7 +340,12 @@ export async function verifyBackup(opts: VerifyBackupOptions): Promise<VerifyRes
   const start = Date.now();
   const client = opts.client ?? prisma;
   const compareDb = opts.compareDb !== false;
-  const persist = opts.persist !== false;
+  const source: VerifyBackupSource = opts.source ?? { kind: "published" };
+  // Persistence is disabled for staging-source verifies — see the
+  // VerifyBackupOptions.persist comment. This is enforced here (not on
+  // the caller) so no future caller can accidentally regress a local
+  // Backup row's status based on a Drive-sourced staging artifact.
+  const persist = source.kind === "staging" ? false : opts.persist !== false;
 
   // Immediately validate the ID shape — refuse to persist ANY result for
   // an invalid ID; we do not want an attacker-supplied ID to leak into
@@ -240,6 +362,10 @@ export async function verifyBackup(opts: VerifyBackupOptions): Promise<VerifyRes
       start
     });
   }
+  const accessor: ArtifactAccessor =
+    source.kind === "published"
+      ? publishedAccessor(opts.backupId)
+      : stagedAccessor(source.dir, source.binName, source.manifestName);
 
   let subkeys: { encKey: Buffer; hmacKey: Buffer } | null = null;
   try {
@@ -267,7 +393,8 @@ export async function verifyBackup(opts: VerifyBackupOptions): Promise<VerifyRes
       client,
       compareDb,
       subkeys,
-      start
+      start,
+      accessor
     });
 
     // Persist to the Backup row (if requested + row exists + id valid).
@@ -305,21 +432,22 @@ interface StageContext {
   compareDb: boolean;
   subkeys: { encKey: Buffer; hmacKey: Buffer };
   start: number;
+  accessor: ArtifactAccessor;
 }
 
 async function runStages(ctx: StageContext): Promise<VerifyResult> {
   try {
     // ── 1. STORAGE_IDENTITY ─────────────────────────────────────────
-    if (!(await publishedBackupExists(ctx.backupId))) {
+    if (!(await ctx.accessor.exists())) {
       throw new BackupVerifyError(
         "STORAGE_MISSING",
         "STORAGE_IDENTITY",
-        "published .bin file does not exist"
+        ".bin file does not exist at source"
       );
     }
     let initialStat;
     try {
-      initialStat = await statPublishedBackup(ctx.backupId);
+      initialStat = await ctx.accessor.stat();
     } catch (err) {
       if (err instanceof BackupStorageError) {
         throw new BackupVerifyError("STORAGE_ERROR", "STORAGE_IDENTITY", "stat failed");
@@ -350,7 +478,7 @@ async function runStages(ctx: StageContext): Promise<VerifyResult> {
     // ── 2. MANIFEST_READ ────────────────────────────────────────────
     let manifestBytes: Buffer;
     try {
-      manifestBytes = await readPublishedManifest(ctx.backupId);
+      manifestBytes = await ctx.accessor.readManifest();
     } catch (err) {
       const code = (err as NodeJS.ErrnoException)?.code;
       throw new BackupVerifyError(
@@ -458,7 +586,7 @@ async function runStages(ctx: StageContext): Promise<VerifyResult> {
         `on-disk ${initialStat.binSize} vs manifest ${manifest.sizeBytes}`
       );
     }
-    const contentSha256 = await streamSha256(ctx.backupId);
+    const contentSha256 = await ctx.accessor.streamSha256();
     if (contentSha256 !== manifest.contentSha256) {
       throw new BackupVerifyError(
         "CONTENT_DIGEST_MISMATCH",
@@ -481,9 +609,8 @@ async function runStages(ctx: StageContext): Promise<VerifyResult> {
     // range reads. GCM requires the tag to be `setAuthTag`ed BEFORE
     // any ciphertext is fed to the decrypter — hence tag is read up
     // front rather than accumulated during streaming.
-    const iv = await readRange(ctx.backupId, 0, IV_BYTES);
-    const tag = await readRange(
-      ctx.backupId,
+    const iv = await ctx.accessor.readRange(0, IV_BYTES);
+    const tag = await ctx.accessor.readRange(
       initialStat.binSize - TAG_BYTES,
       TAG_BYTES
     );
@@ -525,7 +652,7 @@ async function runStages(ctx: StageContext): Promise<VerifyResult> {
       // __end record). But GCM allows empty ciphertext so we let the
       // decrypt run and the NDJSON parser will fail with FORMAT_INVALID.
     }
-    const cipherStream = openPublishedReadStream(ctx.backupId, {
+    const cipherStream = ctx.accessor.openReadStream({
       start: cipherStart,
       end: cipherEndInclusive
     });
@@ -549,7 +676,7 @@ async function runStages(ctx: StageContext): Promise<VerifyResult> {
     const parseResult = parser.result();
 
     // ── 15. RACE_DETECT ─────────────────────────────────────────────
-    const finalStat = await statPublishedBackup(ctx.backupId);
+    const finalStat = await ctx.accessor.stat();
     if (
       finalStat.binSize !== initialStat.binSize ||
       finalStat.binMtime.getTime() !== initialStat.binMtime.getTime()
@@ -699,9 +826,8 @@ function checkDbMetadata(
   }
 }
 
-async function streamSha256(backupId: string): Promise<string> {
+async function streamSha256FromStream(rs: ReadStream): Promise<string> {
   const h = createHash("sha256");
-  const rs = openPublishedReadStream(backupId);
   await pipeline(
     rs,
     new Writable({
@@ -714,15 +840,11 @@ async function streamSha256(backupId: string): Promise<string> {
   return h.digest("hex");
 }
 
-async function readRange(
-  backupId: string,
-  start: number,
-  length: number
+async function readRangeFromStream(
+  rs: ReadStream,
+  length: number,
+  start: number
 ): Promise<Buffer> {
-  const rs = openPublishedReadStream(backupId, {
-    start,
-    end: start + length - 1 // fs createReadStream `end` is inclusive
-  });
   const chunks: Buffer[] = [];
   await pipeline(
     rs,

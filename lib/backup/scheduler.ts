@@ -10,6 +10,10 @@ import { runBackupDump, BackupDumpError } from "./dump";
 import { verifyBackup } from "./verify";
 import { runRetention } from "./retention";
 import { sweepStaleStaging } from "./storage";
+import {
+  enqueueReplicationForBackup,
+  runReplicationWorkerTick
+} from "./replication/worker";
 
 // ─── Scheduler tick (Phase 8) ───────────────────────────────────────────────
 //
@@ -395,6 +399,78 @@ export async function runSchedulerTick(
       } catch {
         outcome = "FAILED_VERIFY";
         errorCode = "INTERNAL";
+      }
+    }
+
+    // ── 5d. Google Drive off-site replication enqueue (Layer L.1) ────────
+    // Runs AFTER verify succeeds, OUTSIDE the advisory-lock tx (that tx
+    // already committed above). This is a single INSERT — no Drive I/O,
+    // no OAuth call. `enqueueReplicationForBackup` is defensive: it
+    // never throws, and it silently no-ops when replication is
+    // disabled (so a pre-config deployment stays quiet).
+    //
+    // A failure of this INSERT does NOT fail the scheduler tick — the
+    // local Backup is already VERIFIED and independently valid. The
+    // replication worker's own self-heal SQL scans for VERIFIED
+    // backups lacking a replication row on every tick, so a missed
+    // enqueue is picked up automatically without operator action.
+    if (outcome === "OK" && backupId) {
+      await enqueueReplicationForBackup({
+        backupId,
+        client,
+        actorId,
+        operationId
+      });
+
+      // ── 5e. Best-effort inline replication worker tick (Layer L.3) ────
+      // The plan lists three callers of `runReplicationWorkerTick`:
+      //   1. the internal cron endpoint,
+      //   2. the manual "Retry replication" admin action (Layer P),
+      //   3. THIS post-verify inline invocation.
+      //
+      // Runs OUTSIDE the scheduler's advisory-lock tx (that tx already
+      // committed in the .then() boundary above). Its own advisory
+      // lock is distinct (0x…02n vs the scheduler's 0x…01n) so it can
+      // never contend for the scheduler's lock.
+      //
+      // Best-effort discipline:
+      //   * `runReplicationWorkerTick` itself never throws — every
+      //     branch returns a sanitized result. We still wrap the call
+      //     in try/catch as belt-and-braces so a bug that DID escape
+      //     the worker's own contract cannot fail the scheduler tick.
+      //   * A failure or SKIPPED_LOCKED outcome is silently ignored:
+      //     the cron endpoint and next scheduler tick will retry.
+      //   * Drive latency is bounded by the worker's own httpTimeoutMs
+      //     (default 90s) — the operator's cron cadence controls
+      //     overall scheduling.
+      //   * Local backup + verify success is ALREADY audited above;
+      //     inline replication is a DR-oriented convenience, not part
+      //     of the local-backup success contract.
+      try {
+        await runReplicationWorkerTick({
+          client,
+          actorId,
+          operationId
+        });
+      } catch (err) {
+        // Never surface. Local backup already succeeded and is
+        // independently valid.
+        //
+        // G10 LOW-1: still emit a best-effort audit row so a hypothetical
+        // regression that violated `runReplicationWorkerTick`'s
+        // never-throws contract becomes observable to operators. No
+        // message body, no stack — same discipline as the outer scheduler
+        // failure audit at the end of this file (line ~528).
+        await audit({
+          userId: actorId,
+          action: "backup.scheduler.replication.inline_error",
+          entity: "BackupSchedule",
+          entityId: SCHEDULE_ID,
+          meta: {
+            operationId,
+            errorClass: err instanceof Error ? err.name : "primitive"
+          }
+        }).catch(() => undefined);
       }
     }
 

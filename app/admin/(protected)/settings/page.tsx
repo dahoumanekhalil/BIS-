@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { canWithOverrides } from "@/lib/admin/rbac";
 import { AdminHeader } from "@/components/admin/header";
 import { getSmtpConfigView } from "@/lib/email/config";
+import { backupConfigStatus } from "@/lib/backup/config";
+import { prisma } from "@/lib/db";
 
 // Settings hub. Sections:
 //   • Compte  — self-service; visible to every authenticated admin
@@ -17,8 +19,48 @@ import { getSmtpConfigView } from "@/lib/email/config";
 // hiding the card is UX, not the security boundary.
 export default async function AdminSettingsPage() {
   const { user } = await requireAdmin();
-  const canManageSettings = await canWithOverrides(user.role, "settings.manage");
+  const [canManageSettings, canBackupView] = await Promise.all([
+    canWithOverrides(user.role, "settings.manage"),
+    canWithOverrides(user.role, "backup.view")
+  ]);
   const view = canManageSettings ? await getSmtpConfigView() : null;
+
+  // Backup card summary — only shown to actors with backup.view. Every
+  // field is a categorical label or a count; NEVER a filesystem path,
+  // encryption key, or session token. `backupConfigStatus()` returns
+  // OK/MISSING/MALFORMED enums only (see lib/backup/config.ts).
+  const backupSummary = canBackupView
+    ? await (async () => {
+        const config = backupConfigStatus();
+        const [schedule, verifiedCount, lastVerified] = await Promise.all([
+          prisma.backupSchedule
+            .findUnique({
+              where: { id: "singleton" },
+              select: { enabled: true, frequencyHours: true }
+            })
+            .catch(() => null),
+          prisma.backup.count({ where: { status: "VERIFIED" } }).catch(() => 0),
+          prisma.backup
+            .findFirst({
+              where: { status: "VERIFIED" },
+              orderBy: { verifiedAt: "desc" },
+              select: { verifiedAt: true }
+            })
+            .catch(() => null)
+        ]);
+        const anyConfigMissing =
+          config.encryptionKey !== "OK" ||
+          config.storageDir !== "OK" ||
+          config.tickSecret !== "OK";
+        return {
+          configured: !anyConfigMissing,
+          scheduleEnabled: schedule?.enabled ?? false,
+          frequencyHours: schedule?.frequencyHours ?? 24,
+          verifiedCount,
+          lastVerifiedAt: lastVerified?.verifiedAt ?? null
+        };
+      })()
+    : null;
 
   return (
     <>
@@ -49,6 +91,64 @@ export default async function AdminSettingsPage() {
             <span className="font-semibold text-ink/70">{user.email}</span>
           </p>
         </Link>
+
+        {canBackupView && backupSummary && (
+          <Link
+            href="/admin/backups"
+            className="block rounded-[20px] border border-line bg-white p-6 transition-shadow hover:shadow-[0_20px_50px_-30px_rgba(15,25,60,0.25)]"
+          >
+            <div className="flex items-center gap-3">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-cobalt">
+                Sauvegardes
+              </p>
+              <span
+                className={
+                  backupSummary.configured
+                    ? "inline-flex items-center rounded-full bg-lime/20 px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink"
+                    : "inline-flex items-center rounded-full bg-red-100 px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em] text-red-800"
+                }
+              >
+                {backupSummary.configured ? "Configuré" : "Configuration incomplète"}
+              </span>
+              <span
+                className={
+                  backupSummary.scheduleEnabled
+                    ? "inline-flex items-center rounded-full bg-cobalt/10 px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em] text-cobalt"
+                    : "inline-flex items-center rounded-full bg-ink/10 px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink/60"
+                }
+              >
+                {backupSummary.scheduleEnabled
+                  ? `Planifié · ${backupSummary.frequencyHours}h`
+                  : "Planificateur désactivé"}
+              </span>
+            </div>
+            <h2 className="mt-3 font-display text-2xl font-black tracking-tight text-ink">
+              Sauvegardes & restauration
+            </h2>
+            <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink/65">
+              Configurer le planificateur, la politique de rétention et
+              la réplication off-site Google Drive. Chaque sauvegarde
+              locale est chiffrée, vérifiée, et son état est indépendant
+              de la copie distante.
+            </p>
+            <p className="mt-4 text-[12px] text-ink/50">
+              {backupSummary.verifiedCount.toLocaleString("fr-FR")}{" "}
+              sauvegarde{backupSummary.verifiedCount === 1 ? "" : "s"} vérifiée
+              {backupSummary.verifiedCount === 1 ? "" : "s"}
+              {backupSummary.lastVerifiedAt && (
+                <>
+                  {" "}·{" "}
+                  <span className="font-semibold text-ink/70">
+                    dernière le{" "}
+                    {new Intl.DateTimeFormat("fr-FR", {
+                      dateStyle: "medium"
+                    }).format(new Date(backupSummary.lastVerifiedAt))}
+                  </span>
+                </>
+              )}
+            </p>
+          </Link>
+        )}
 
         {canManageSettings && view && (
           <Link

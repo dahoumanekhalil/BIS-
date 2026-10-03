@@ -88,13 +88,35 @@ export type BackupModelName = (typeof MODEL_ORDER)[number];
 export const DROP_ORDER = [...MODEL_ORDER].reverse() as readonly BackupModelName[];
 
 /**
- * Models INTENTIONALLY excluded from backup / restore. Empty today; kept
- * as a documented extension point. If a future model is intentionally
- * excluded (e.g., ephemeral cache), add it here with a justifying
- * comment AND update `assertModelCoverage` below.
+ * Models INTENTIONALLY excluded from backup / restore. If a future model
+ * is intentionally excluded (e.g., ephemeral cache), add it here with a
+ * justifying comment AND update `assertModelCoverage` below.
  */
 export const EXCLUDED_MODELS = new Set<string>([
-  // (none)
+  // Google Drive off-site replication metadata is intentionally
+  // excluded (Layer A carry-over — first surfaced by the Layer G
+  // regression gate).
+  //
+  //   * `BackupReplication` holds `uploadSessionUri` — a Drive
+  //     resumable-upload session URI that is bearer-equivalent
+  //     (see docs/BACKUP_GOOGLE_DRIVE_IMPLEMENTATION_PLAN.md §G, §R).
+  //     Serialising it into a backup file would embed a live
+  //     credential into the ciphertext. The value is ephemeral (~7d
+  //     expiry) and self-healable, so its inclusion adds risk without
+  //     restoring recoverable state.
+  //   * `BackupReplicationConfig` holds `folderId` + `folderMarker`.
+  //     These are NOT secrets, but the marker-based re-discovery flow
+  //     (§E.3) is designed so that after any DB restore the operator's
+  //     next `backup:drive-bootstrap` invocation re-derives the
+  //     folderId. Bundling the row into a backup would pin a stale
+  //     folderId across environments (dev restored from prod), which
+  //     the marker discovery explicitly wants to avoid.
+  //
+  // Post-restore, the replication worker's self-heal scan (§L.2) will
+  // enqueue every VERIFIED backup that lacks a replication row within
+  // one worker tick — no operator action required.
+  "BackupReplication",
+  "BackupReplicationConfig"
 ]);
 
 /**

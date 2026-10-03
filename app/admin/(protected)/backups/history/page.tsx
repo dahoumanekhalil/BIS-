@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/admin/auth";
+import { canWithOverrides } from "@/lib/admin/rbac";
 import { AdminHeader } from "@/components/admin/header";
 import { EmptyState } from "@/components/admin/ui";
 import { listBackupsAction } from "../actions";
+import {
+  failureLabel,
+  loadReplicationsForBackups,
+  verifyLabel
+} from "../replication/query";
+import type { PublicReplicationView } from "@/lib/backup/replication/serializer";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -71,6 +78,17 @@ export default async function BackupsHistoryPage({
 
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
 
+  // Google Drive replication state per row (§P.4). Loaded through the
+  // browser-safe serializer — no sessionUri / bytesSent leaks. Absent
+  // rows fall through to a neutral "—" cell.
+  const canViewReplication = await canWithOverrides(
+    user.role,
+    "backup.replication.view"
+  );
+  const replicationRows = canViewReplication
+    ? await loadReplicationsForBackups(result.items.map((r) => r.id))
+    : new Map<string, PublicReplicationView>();
+
   return (
     <>
       <AdminHeader user={user} title="Historique des sauvegardes" subtitle="Sauvegardes" />
@@ -104,13 +122,16 @@ export default async function BackupsHistoryPage({
             <table className="w-full table-fixed text-left text-[12.5px]">
               <thead className="border-b border-line bg-ink/[0.02]">
                 <tr>
-                  <th className="w-[28%] px-4 py-3 font-semibold text-ink/60">ID</th>
-                  <th className="w-[12%] px-4 py-3 font-semibold text-ink/60">Statut</th>
-                  <th className="w-[10%] px-4 py-3 font-semibold text-ink/60">Type</th>
-                  <th className="w-[18%] px-4 py-3 font-semibold text-ink/60">Démarrée</th>
-                  <th className="w-[10%] px-4 py-3 font-semibold text-ink/60">Taille</th>
-                  <th className="w-[12%] px-4 py-3 font-semibold text-ink/60">Vérification</th>
-                  <th className="w-[10%] px-4 py-3 font-semibold text-ink/60">App</th>
+                  <th className="w-[22%] px-4 py-3 font-semibold text-ink/60">ID</th>
+                  <th className="w-[10%] px-4 py-3 font-semibold text-ink/60">Statut local</th>
+                  <th className="w-[9%] px-4 py-3 font-semibold text-ink/60">Type</th>
+                  <th className="w-[15%] px-4 py-3 font-semibold text-ink/60">Démarrée</th>
+                  <th className="w-[9%] px-4 py-3 font-semibold text-ink/60">Taille</th>
+                  <th className="w-[10%] px-4 py-3 font-semibold text-ink/60">Vérification</th>
+                  {canViewReplication && (
+                    <th className="w-[16%] px-4 py-3 font-semibold text-ink/60">Google Drive</th>
+                  )}
+                  <th className="w-[9%] px-4 py-3 font-semibold text-ink/60">App</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,6 +165,11 @@ export default async function BackupsHistoryPage({
                         <span className="text-ink/40">—</span>
                       )}
                     </td>
+                    {canViewReplication && (
+                      <td className="px-4 py-3">
+                        <RemotePill row={replicationRows.get(row.id)} />
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-ink/60">{row.appVersion}</td>
                   </tr>
                 ))}
@@ -193,6 +219,37 @@ function FilterChip({ href, active, label }: { href: string; active: boolean; la
     >
       {label}
     </Link>
+  );
+}
+
+function RemotePill({ row }: { row: PublicReplicationView | undefined }) {
+  // §P.4 honesty: the Google Drive column reflects REMOTE state ONLY.
+  // A red remote pill NEVER implies the local Backup is failed. When no
+  // replication row exists yet, render "—" (either Drive is disabled
+  // for this env, or the worker has not picked up the enqueue yet).
+  if (!row) return <span className="text-ink/40">—</span>;
+  const s = row.status.toUpperCase();
+  const failure = failureLabel(row);
+  const style =
+    row.errorCode !== "NONE"
+      ? "bg-red-100 text-red-900"
+      : s === "COMPLETED"
+        ? "bg-lime/25 text-ink"
+        : s === "FAILED"
+          ? "bg-red-100 text-red-900"
+          : s === "RETRYABLE_FAILURE"
+            ? "bg-amber-100 text-amber-900"
+            : s === "UPLOADING" || s === "VERIFYING" || s === "PENDING"
+              ? "bg-cobalt/15 text-cobalt-700"
+              : "bg-ink/10 text-ink/70";
+  const label = row.errorCode !== "NONE" ? `${s} · ${row.errorCode}` : s;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em] ${style}`}
+      title={failure ?? verifyLabel(row)}
+    >
+      {label}
+    </span>
   );
 }
 

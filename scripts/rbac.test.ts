@@ -216,6 +216,101 @@ describe("restricted roles get NO new permissions", () => {
   }
 });
 
+// ─── Google Drive replication permissions (§P.1) ──────────────────────────
+//
+// Six discrete verbs added by the off-site backup replication track.
+// Baseline (from lib/admin/rbac.ts):
+//   SUPER_ADMIN → all six
+//   ADMIN       → view + retry + verify + reconcile
+//                 (NOT restore, NOT settings)
+//   others      → none (grantable via RolePermissionOverride)
+//
+// These tests lock the baseline so a future refactor of the ALL/DENIED
+// filter cannot silently promote or demote a role.
+
+const REPLICATION_PERMS = [
+  "backup.replication.view",
+  "backup.replication.retry",
+  "backup.replication.verify",
+  "backup.replication.reconcile",
+  "backup.replication.restore",
+  "backup.replication.settings"
+] as const satisfies readonly Permission[];
+
+const ADMIN_REPLICATION_PERMS = [
+  "backup.replication.view",
+  "backup.replication.retry",
+  "backup.replication.verify",
+  "backup.replication.reconcile"
+] as const satisfies readonly Permission[];
+
+const ADMIN_DENIED_REPLICATION_PERMS = [
+  "backup.replication.restore",
+  "backup.replication.settings"
+] as const satisfies readonly Permission[];
+
+describe("Google Drive replication permissions (§P.1)", () => {
+  test("PERMISSIONS registry contains all six replication verbs", () => {
+    for (const p of REPLICATION_PERMS) {
+      assert.ok(PERMISSIONS.includes(p), `PERMISSIONS missing ${p}`);
+    }
+  });
+
+  test("SUPER_ADMIN holds all six replication verbs", () => {
+    for (const p of REPLICATION_PERMS) {
+      assert.equal(
+        can(AdminRole.SUPER_ADMIN, p),
+        true,
+        `SUPER_ADMIN missing ${p}`
+      );
+    }
+  });
+
+  test("ADMIN holds view + retry + verify + reconcile", () => {
+    for (const p of ADMIN_REPLICATION_PERMS) {
+      assert.equal(
+        can(AdminRole.ADMIN, p),
+        true,
+        `ADMIN missing baseline replication perm ${p}`
+      );
+    }
+  });
+
+  test("ADMIN does NOT hold restore or settings (SUPER_ADMIN-only)", () => {
+    for (const p of ADMIN_DENIED_REPLICATION_PERMS) {
+      assert.equal(
+        can(AdminRole.ADMIN, p),
+        false,
+        `ADMIN unexpectedly has SUPER_ADMIN-only replication perm ${p}`
+      );
+    }
+  });
+
+  test("no restricted role gains any replication perm", () => {
+    for (const r of RESTRICTED_ROLES) {
+      for (const p of REPLICATION_PERMS) {
+        assert.equal(
+          can(r, p),
+          false,
+          `${r} unexpectedly has replication perm ${p}`
+        );
+      }
+    }
+    // REGISTRATION_MANAGER + CHECKIN_OPERATOR aren't in RESTRICTED_ROLES —
+    // they hold specific backup-adjacent capabilities but MUST NOT gain
+    // any replication verb by baseline.
+    for (const r of [AdminRole.REGISTRATION_MANAGER, AdminRole.CHECKIN_OPERATOR]) {
+      for (const p of REPLICATION_PERMS) {
+        assert.equal(
+          can(r, p),
+          false,
+          `${r} unexpectedly has replication perm ${p}`
+        );
+      }
+    }
+  });
+});
+
 // ─── Helpers (Phase 10/11 entry points) ───────────────────────────────────
 // Both helpers are STRICT since the pre-Phase-5 hardening pass: legacy
 // `checkin.validate` does NOT authorize any QR flow. The manual ticket-code

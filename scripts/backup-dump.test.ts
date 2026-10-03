@@ -56,13 +56,29 @@ after(async () => {
 });
 
 describe("model-order — schema coverage guard", async () => {
-  const { MODEL_ORDER, assertModelCoverage } = await import("../lib/backup/model-order");
+  const { MODEL_ORDER, EXCLUDED_MODELS, assertModelCoverage } = await import(
+    "../lib/backup/model-order"
+  );
   const { Prisma } = await import("@prisma/client");
 
-  test("MODEL_ORDER covers every Prisma model exactly once", () => {
+  test("MODEL_ORDER ∪ EXCLUDED_MODELS covers every Prisma model exactly once", () => {
+    // EXCLUDED_MODELS is a documented, auditable set of models that are
+    // intentionally NOT serialised by the backup subsystem. See
+    // lib/backup/model-order.ts for the justification per entry.
     const generated = Object.keys(Prisma.ModelName).sort();
-    const curated = [...MODEL_ORDER].sort();
-    assert.deepEqual(curated, generated, "curated list must match Prisma.ModelName");
+    const covered = [...MODEL_ORDER, ...EXCLUDED_MODELS].sort();
+    assert.deepEqual(
+      covered,
+      generated,
+      "MODEL_ORDER + EXCLUDED_MODELS must together match Prisma.ModelName"
+    );
+    // Belt-and-braces: no model may appear in BOTH lists.
+    const overlap = MODEL_ORDER.filter((m) => EXCLUDED_MODELS.has(m));
+    assert.deepEqual(
+      overlap,
+      [],
+      `no model may appear in both MODEL_ORDER and EXCLUDED_MODELS: ${overlap.join(", ")}`
+    );
   });
 
   test("assertModelCoverage does not throw on the current schema", () => {

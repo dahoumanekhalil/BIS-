@@ -392,6 +392,159 @@ export async function deletePublishedBackup(id: string): Promise<void> {
   }
 }
 
+// ─── Staged reads (Layer I: remote restore integration §N.2) ─────────────
+//
+// The remote-restore pipeline downloads a Drive-sourced .bin + manifest
+// into an isolated staging subdirectory, then invokes `verifyBackup`
+// with `source: { kind: "staging", dir, ... }`. These helpers give the
+// verifier a bounded read surface over that staging dir, reusing the
+// same filename validation as the published helpers so a caller
+// cannot smuggle `..`, `/`, or a nul byte into the read path.
+//
+// Path-safety rules (identical to `resolveSafe`):
+//   * `dir` MUST be an absolute path derived server-side. The caller
+//     builds it via `assertStagingSubdir(subdirName)` below — never
+//     from operator input.
+//   * `name` is validated for `[/, \, \0]`, leading `.`, and absolute
+//     path shape. A traversal attempt is refused with
+//     `BackupStorageError`.
+//   * The resolved file MUST be a direct child of `dir`. Symlink
+//     traversal is refused by shape-check (no `..`, no separator).
+
+/**
+ * Ensure `subdirName` is a safe, non-traversing subdirectory of the
+ * backup storage root's `staging/` directory. Returns its absolute path.
+ * Used by the remote-restore pipeline to create per-operation staging
+ * dirs such as `staging/drive-restore-<opId>/`.
+ */
+export async function assertStagingSubdir(subdirName: string): Promise<string> {
+  if (
+    typeof subdirName !== "string" ||
+    subdirName.length === 0 ||
+    subdirName.length > 128 ||
+    subdirName.includes("/") ||
+    subdirName.includes("\\") ||
+    subdirName.includes("\0") ||
+    subdirName.startsWith(".") ||
+    path.isAbsolute(subdirName)
+  ) {
+    throw new BackupStorageError("Invalid staging subdirectory name.");
+  }
+  const root = loadBackupStorageDir();
+  const stagingRoot = path.resolve(root, STAGING_DIR);
+  const dir = path.resolve(stagingRoot, subdirName);
+  if (path.dirname(dir) !== stagingRoot) {
+    throw new BackupStorageError("Path traversal detected on staging subdir.");
+  }
+  await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+  await safeChmod(dir, 0o700);
+  return dir;
+}
+
+/**
+ * Recursively delete a per-operation staging subdirectory. Best-effort;
+ * swallows ENOENT. Refuses to touch anything outside the storage root's
+ * `staging/`. Safe to call from a `finally` block.
+ */
+export async function deleteStagingSubdir(dir: string): Promise<void> {
+  try {
+    const root = loadBackupStorageDir();
+    const stagingRoot = path.resolve(root, STAGING_DIR);
+    const resolved = path.resolve(dir);
+    // Refuse to rm anything that is not strictly inside stagingRoot.
+    if (!resolved.startsWith(stagingRoot + path.sep)) {
+      throw new BackupStorageError(
+        "Refusing to delete: path is outside the staging root."
+      );
+    }
+    await fs.rm(resolved, { recursive: true, force: true });
+  } catch (err) {
+    if (err instanceof BackupStorageError) throw err;
+    // ENOENT / permission — best-effort semantics.
+  }
+}
+
+/**
+ * Same shape/traversal guard as `resolveSafe`, but the caller supplies
+ * the absolute directory. Returns the resolved absolute path.
+ */
+function resolveInStaged(dir: string, name: string): string {
+  if (typeof dir !== "string" || !path.isAbsolute(dir)) {
+    throw new BackupStorageError("Staged dir must be an absolute path.");
+  }
+  if (
+    typeof name !== "string" ||
+    name.length === 0 ||
+    name.includes("/") ||
+    name.includes("\\") ||
+    name.includes("\0") ||
+    name.startsWith(".") ||
+    path.isAbsolute(name)
+  ) {
+    throw new BackupStorageError("Invalid staged filename.");
+  }
+  const base = path.resolve(dir);
+  const full = path.resolve(base, name);
+  if (path.dirname(full) !== base) {
+    throw new BackupStorageError("Staged path traversal detected.");
+  }
+  return full;
+}
+
+/**
+ * Open a ReadStream over a file inside a staging subdirectory. Mirrors
+ * `openPublishedReadStream` semantics so `verifyBackup` can operate on
+ * either source without a code fork.
+ */
+export function openStagedReadStream(
+  dir: string,
+  name: string,
+  opts?: { start?: number; end?: number }
+): ReadStream {
+  const full = resolveInStaged(dir, name);
+  return createReadStream(full, {
+    start: opts?.start,
+    end: opts?.end
+  });
+}
+
+export async function readStagedManifest(
+  dir: string,
+  name: string
+): Promise<Buffer> {
+  const full = resolveInStaged(dir, name);
+  return fs.readFile(full);
+}
+
+export async function statStagedFile(
+  dir: string,
+  name: string
+): Promise<{ size: number; mtime: Date }> {
+  const full = resolveInStaged(dir, name);
+  const s = await fs.stat(full);
+  return { size: s.size, mtime: s.mtime };
+}
+
+/**
+ * Convenience pair-stat mirroring `statPublishedBackup` but keyed on
+ * explicit filenames rather than a backupId. The remote-restore
+ * pipeline calls this immediately after downloading both artefacts
+ * and before invoking `verifyBackup(source=staging)`.
+ */
+export async function statStagedPair(
+  dir: string,
+  binName: string,
+  manifestName: string
+): Promise<{ binSize: number; manifestSize: number; binMtime: Date }> {
+  const bin = await statStagedFile(dir, binName);
+  const manifest = await statStagedFile(dir, manifestName);
+  return {
+    binSize: bin.size,
+    manifestSize: manifest.size,
+    binMtime: bin.mtime
+  };
+}
+
 // ─── Reconciliation / cleanup ──────────────────────────────────────────────
 
 /**

@@ -160,18 +160,10 @@ const GROUPS: NavGroup[] = [
         permission: "audit.view",
         icon: <Icon d="M4 6h16M4 12h16M4 18h10" />
       },
-      // Phase 9 — Backup & Restore. Read gated by backup.view; the
-      // individual pages / actions inside require the appropriate
-      // backup.<verb> permission (server-side enforcement — hiding
-      // the entry here is UX only).
-      {
-        href: "/admin/backups",
-        label: "Sauvegardes",
-        permission: "backup.view",
-        icon: (
-          <Icon d="M4 7v10a2 2 0 002 2h12a2 2 0 002-2V9l-4-4H6a2 2 0 00-2 2z M14 3v6h6" />
-        )
-      },
+      // Backup & Restore is accessed via the "Sauvegardes" card on the
+      // /admin/settings hub — no dedicated sidebar entry. The server-side
+      // authorization on /admin/backups/** is unchanged; hiding the
+      // sidebar entry is UX only.
       {
         href: "/admin/settings",
         label: "Settings",

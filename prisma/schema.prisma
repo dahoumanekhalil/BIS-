@@ -1017,6 +1017,16 @@ model Backup {
   // while surfacing "safety snapshot is no longer available" via NULL.
   safetyBackupFor RestoreOperation[] @relation("RestoreSafety")
 
+  // ─── Google Drive off-site replication (Backup Drive Replication) ─────
+  // Off-site replication rows for this backup. One-to-many so the schema
+  // can later host additional destinations without another migration;
+  // v1 has exactly one destination (GOOGLE_DRIVE) and enforces
+  // one-row-per-(backup, destination) via a unique constraint on
+  // BackupReplication. A local Backup lifecycle is INDEPENDENT of any
+  // replication row — nothing in lib/backup/replication ever writes to
+  // Backup.status. See docs/BACKUP_GOOGLE_DRIVE_IMPLEMENTATION_PLAN.md.
+  replications BackupReplication[]
+
   @@index([status])
   @@index([startedAt])
   @@index([kind])
@@ -1063,21 +1073,21 @@ model RestoreOperation {
 // automated backup behaviour. Disabled by default — the operator must
 // explicitly opt-in via the settings UI or a seed script.
 model BackupSchedule {
-  id             String   @id @default("singleton")
-  enabled        Boolean  @default(false)
+  id               String   @id @default("singleton")
+  enabled          Boolean  @default(false)
   // 1..168 (1h..1 week). Enforced by the settings server action, not the DB.
-  frequencyHours Int      @default(24)
+  frequencyHours   Int      @default(24)
   // Keep the N most recent COMPLETED / VERIFIED backups. Enforced with a
   // floor of 1 in the retention code — regardless of misconfiguration,
   // retention MUST NEVER leave zero valid backups.
-  retentionCount Int      @default(14)
+  retentionCount   Int      @default(14)
   // Maximum age (days) of a retained backup. Independent of retentionCount:
   // a backup older than this is prunable EVEN IF the count is under the
   // ceiling — UNLESS its deletion would drop us below the retention floor.
   // 0 disables the age-based rule. Enforced in lib/backup/retention.ts.
-  retentionAgeDays Int    @default(90)
-  updatedAt      DateTime @updatedAt
-  updatedById    String?
+  retentionAgeDays Int      @default(90)
+  updatedAt        DateTime @updatedAt
+  updatedById      String?
 
   // ─── Scheduler state (Phase 8) ────────────────────────────────────────
   // Persisted so a duplicate cron POST is idempotent: the tick service
@@ -1086,15 +1096,187 @@ model BackupSchedule {
   // treats itself as "not due", never creating a duplicate backup.
   // `lastRunOutcome` distinguishes SUCCESS / FAILURE / SKIPPED so the
   // dashboard can surface schedule health without reading the audit log.
-  lastRunAt        DateTime? // last time the tick actually attempted a backup
+  lastRunAt       DateTime? // last time the tick actually attempted a backup
   // "OK" | "RUNNING" | "FAILED_DUMP" | "FAILED_VERIFY" | "FAILED_INTERNAL_STUCK"
   //   | "SKIPPED_LOCKED" | "SKIPPED_NOT_DUE" | "SKIPPED_DISABLED" | "SKIPPED_ACTIVE" | "INTERNAL"
   // Kept as a free-form string (not an enum) so future outcomes can be
   // added without a migration. See lib/backup/scheduler.ts::SchedulerOutcome.
-  lastRunOutcome   String?
-  lastRunBackupId  String?   // Backup row created by the last run (SUCCESS or FAILURE)
-  lastRunError     String?   // sanitized failure code, never a raw exception
+  lastRunOutcome  String?
+  lastRunBackupId String? // Backup row created by the last run (SUCCESS or FAILURE)
+  lastRunError    String? // sanitized failure code, never a raw exception
   // Bounded catch-up: after an outage, at most ONE backup is created per
   // tick — never a burst of N=missed-intervals. Documented in
   // BACKUP_RESTORE_IMPLEMENTATION_PLAN.md.
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// GOOGLE DRIVE OFF-SITE REPLICATION (Layer A of the Drive replication plan)
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Purpose: every locally VERIFIED Backup is replicated, asynchronously and
+// idempotently, to a dedicated application-managed folder in the operator's
+// Google Drive. Only the already-encrypted `.bin` and signed
+// `.manifest.json` artefacts are uploaded — never plaintext, never keys.
+//
+// Invariants enforced across the code paths that USE this schema (not by
+// the schema itself; documented here for the reader):
+//   • Nothing in lib/backup/replication/** ever writes to Backup.status.
+//     A Google Drive outage cannot regress a VERIFIED local backup.
+//   • Idempotency is anchored on `@@unique([backupId, destination])`:
+//     exactly one replication row per (backup, destination). Retries
+//     mutate this row rather than creating siblings.
+//   • The `errorMessage` column is sanitized on every write — no OAuth
+//     tokens, no session URIs, no request headers. Capped at 512 chars.
+//   • `attestedContentSha256` is populated ONLY by a full-SHA256 verify
+//     (download + hash). METADATA_ONLY verify leaves it null. Do not
+//     misread this field.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Off-site destination. Enum (rather than free-form string) so a typo in
+// a lib/backup/replication file becomes a compile error. v1 has exactly
+// one destination — future destinations (R2/S3) can be added without a
+// column rename.
+enum BackupReplicationDestination {
+  GOOGLE_DRIVE
+}
+
+// State-machine states. Documented transitions live in
+// docs/BACKUP_GOOGLE_DRIVE_IMPLEMENTATION_PLAN.md § K.
+enum BackupReplicationStatus {
+  PENDING // enqueued; worker has not touched it yet
+  UPLOADING // worker owns it; a resumable-upload session may exist
+  VERIFYING // upload done; running metadata / SHA-256 verify
+  COMPLETED // metadata-verified remote object present
+  RETRYABLE_FAILURE // transient failure; nextRetryAt set
+  FAILED // permanent failure; requires manual admin retry
+}
+
+// Classified error code. Never accepts a raw Google error string. See
+// docs/BACKUP_GOOGLE_DRIVE_IMPLEMENTATION_PLAN.md § I for the full
+// classifier truth table.
+enum BackupReplicationErrorCode {
+  NONE
+  AUTHENTICATION_ERROR // Drive 401 or transient token-refresh failure
+  REVOKED_AUTHORIZATION // OAuth `invalid_grant` — refresh token revoked/invalid
+  AUTHORIZATION_ERROR // 403 insufficient permission on the folder
+  DESTINATION_NOT_FOUND // folder ID from config no longer exists in Drive
+  QUOTA_EXCEEDED // Drive `storageQuotaExceeded`
+  RATE_LIMITED // 429 or 403 `userRateLimitExceeded`
+  NETWORK_ERROR // ECONNRESET / TLS / socket
+  TIMEOUT // deadline exceeded
+  SERVER_ERROR // 500 / 502 / 503 / 504
+  UPLOAD_SESSION_EXPIRED // resumable session URI no longer valid
+  REMOTE_VERIFICATION_FAILED // metadata comparison mismatch (name/parent/appProperties)
+  REMOTE_SIZE_MISMATCH // Drive-reported size ≠ expected
+  REMOTE_CHECKSUM_MISMATCH // Drive MD5 ≠ our MD5, or our SHA-256 ≠ Backup.contentSha256
+  LOCAL_SOURCE_MISSING // published/<id>.bin gone before we could upload
+  LOCAL_SOURCE_CORRUPTED // preflight SHA-256 of local file ≠ Backup.contentSha256
+  CONFIGURATION_ERROR // env misconfigured / folder ID unset / duplicate folder
+  UNKNOWN
+  // Layer J (§O.2): Drive returned 404 for a remote object we had
+  // previously recorded. Applied by `reconcileReplicationRemote`
+  // without touching Backup.status or BackupReplication.status —
+  // the row stays COMPLETED to preserve the historical fact that
+  // the upload+metadata verify DID succeed.
+  REMOTE_MISSING
+}
+
+// Verification level attested by `attestedContentSha256` + `lastVerifyLevel`.
+// See § J for the honesty-gate discussion — do NOT conflate METADATA_ONLY
+// (Google's MD5) with FULL_SHA256 (our own re-download + SHA-256).
+enum BackupReplicationVerifyLevel {
+  NONE // never attempted
+  METADATA_ONLY // Drive-reported size + md5Checksum + appProperties match
+  FULL_SHA256 // downloaded + application SHA-256 recomputed and matched
+}
+
+// One row per (Backup, destination). Insert happens when Backup transitions
+// to VERIFIED (scheduler post-verify enqueue; or self-heal query at the
+// top of every worker tick). All Drive network I/O happens OUTSIDE any
+// database transaction — see Layer L.
+model BackupReplication {
+  id String @id @default(cuid())
+
+  // Restrict on delete for the same reason RestoreOperation uses Restrict
+  // on backupId: preserve audit history. Backup rows are soft-deleted
+  // (Backup.status = DELETED) rather than physically removed, so
+  // `onDelete: Restrict` is not an operational hazard.
+  backupId String
+  backup   Backup @relation(fields: [backupId], references: [id], onDelete: Restrict)
+
+  destination BackupReplicationDestination
+  status      BackupReplicationStatus      @default(PENDING)
+
+  // ── Remote identity (null until the first successful upload) ──
+  remoteBinFileId      String? @db.VarChar(128)
+  remoteManifestFileId String? @db.VarChar(128)
+  remoteFolderId       String? @db.VarChar(128)
+  remoteBinSize        BigInt?
+  remoteManifestSize   BigInt?
+  // Google's own MD5 of the .bin — meaningful only for the METADATA_ONLY
+  // level. NOT a SHA-256 attestation.
+  remoteBinMd5         String? @db.VarChar(64)
+  remoteManifestMd5    String? @db.VarChar(64)
+
+  // ── SHA-256 attestation (only present after FULL_SHA256 verify) ──
+  attestedContentSha256 String?                      @db.VarChar(64)
+  lastVerifyLevel       BackupReplicationVerifyLevel @default(NONE)
+  lastVerifiedAt        DateTime?
+
+  // ── Resumable-upload session state (crash-recovery anchor) ──
+  // sessionUri is Google's opaque URL — treat as a session token. Bounded
+  // so a malicious/mistaken write cannot flood the column.
+  uploadSessionUri       String?   @db.VarChar(2048)
+  uploadSessionExpiresAt DateTime? // ≈ +7 days from creation
+  uploadBytesSent        BigInt? // last confirmed byte count
+
+  uploadStartedAt   DateTime?
+  uploadCompletedAt DateTime?
+  lastAttemptAt     DateTime?
+  attemptCount      Int       @default(0)
+  nextRetryAt       DateTime? // null when not scheduled
+
+  errorCode    BackupReplicationErrorCode @default(NONE)
+  // Sanitized, ≤512 chars. Never a URL, never a token, never a raw
+  // Google response body. Rendered as-is in the admin UI.
+  errorMessage String?                    @db.VarChar(512)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([backupId, destination])
+  @@index([status, nextRetryAt])
+  @@index([destination, status])
+}
+
+// Singleton config row for the Google Drive backup destination. The
+// application creates its own dedicated folder in the user's Drive on
+// first bootstrap (Layer B script) and persists its Drive folderId
+// here. The folder is re-discoverable via a marker stored in the
+// folder's Drive `appProperties` — the app never trusts folder names
+// alone for identity.
+model BackupReplicationConfig {
+  id String @id @default("google_drive")
+
+  // Drive folder ID (opaque; not a secret — appears in Drive URLs). Null
+  // until the bootstrap script has successfully created (or discovered)
+  // the folder in the authorized user's Drive.
+  folderId String? @db.VarChar(128)
+
+  // Human-readable folder name used when the bootstrap script creates the
+  // folder. Not used for identity — only for the initial `files.create`
+  // call. Renaming this after bootstrap does NOT move the actual folder.
+  folderName String @default("BIS 2027 — Encrypted Backups (managed by application)")
+
+  // Value written to the folder's Drive `appProperties.marker` on
+  // creation. Used by the worker to re-discover the folder if `folderId`
+  // is ever lost (e.g., DB restore from an earlier point in time). The
+  // marker is stable across app versions; do NOT rename without an
+  // explicit migration plan.
+  folderMarker String @default("bis2027-backup-folder-v1")
+
+  bootstrappedAt   DateTime?
+  lastReconciledAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }

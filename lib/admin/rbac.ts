@@ -134,7 +134,65 @@ export const PERMISSIONS = [
   "backup.verify",
   "backup.delete",
   "backup.restore",
-  "backup.settings"
+  "backup.settings",
+
+  // ─── Google Drive off-site replication (Plan §P.1) ───────────────────
+  //
+  // Six discrete verbs authorising the operator-driven replication
+  // surface. The automated worker (invoked by the internal cron tick)
+  // does NOT check these permissions — it authenticates via the shared
+  // secret at the /api/internal/backup/replicate/tick endpoint. These
+  // permissions gate the future admin-console surface for manual
+  // intervention (retry a failed row, deep-verify, reconcile after a
+  // Drive-side change, restore from Drive, or toggle the destination).
+  //
+  //   backup.replication.view       — read the "Google Drive" column /
+  //                                    tab. Non-destructive.
+  //   backup.replication.retry      — reset a FAILED replication row to
+  //                                    PENDING so the worker picks it up
+  //                                    again. Additive; the worker still
+  //                                    refuses to touch Backup.status.
+  //   backup.replication.verify     — trigger a deep verify (metadata or
+  //                                    FULL_SHA256 re-download). Never
+  //                                    mutates Backup or the row's
+  //                                    status — only `errorCode`,
+  //                                    `errorMessage`, `lastVerifiedAt`
+  //                                    and (FULL_SHA256 only)
+  //                                    `attestedContentSha256`.
+  //   backup.replication.reconcile  — force a `files.get` sweep on both
+  //                                    remote objects. Never mutates
+  //                                    Backup; sets REMOTE_MISSING on
+  //                                    the row if the Drive object is
+  //                                    gone.
+  //   backup.replication.restore    — HIGH PRIVILEGE. Kicks off the
+  //                                    download-first remote restore
+  //                                    pipeline. REQUIRED IN ADDITION TO
+  //                                    `backup.restore` (both are
+  //                                    checked). The existing restore
+  //                                    control set (confirmation phrase,
+  //                                    password re-auth, safety
+  //                                    snapshot, actor-in-source check)
+  //                                    is preserved by chaining into the
+  //                                    Phase 7 restore action after the
+  //                                    download.
+  //   backup.replication.settings   — enable/disable off-site
+  //                                    replication + bootstrap the
+  //                                    application-managed Drive folder.
+  //                                    Baseline: SUPER_ADMIN only.
+  //
+  // Baseline role assignments (see ROLE_PERMISSIONS below):
+  //   SUPER_ADMIN → all six
+  //   ADMIN       → view + retry + verify + reconcile
+  //                 (NOT restore/settings — mirrors the Phase 6 pattern
+  //                 that gates destructive verbs behind SUPER_ADMIN)
+  //   others      → none by default; grant via RolePermissionOverride
+  //                 if operations delegates.
+  "backup.replication.view",
+  "backup.replication.retry",
+  "backup.replication.verify",
+  "backup.replication.reconcile",
+  "backup.replication.restore",
+  "backup.replication.settings"
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -155,7 +213,14 @@ const ADMIN_DENIED: Permission[] = [
   // RolePermissionOverride row without touching this table.
   "backup.delete",
   "backup.restore",
-  "backup.settings"
+  "backup.settings",
+  // Off-site replication: ADMIN handles day-to-day operator intervention
+  // (retry / verify / reconcile) but NOT the destructive verbs. `restore`
+  // and `settings` are SUPER_ADMIN-only by baseline; the former initiates
+  // a destructive restore, the latter can disable the whole off-site
+  // pipeline or rewire the Drive folder identity.
+  "backup.replication.restore",
+  "backup.replication.settings"
 ];
 
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
