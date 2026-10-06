@@ -1,0 +1,24 @@
+node_modules/
+# generated from ../public by `npm run sync:www`
+www/
+# pwa icons produced by @capacitor/assets (the website has its own)
+icons/
+manifest.webmanifest
+# native build outputs / local config
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/Pods/
+ios/DerivedData/
+# SIGNING MATERIAL — must never be committed
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+*.p8
+key.properties

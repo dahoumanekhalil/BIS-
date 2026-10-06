@@ -1,0 +1,27 @@
+{
+  "name": "bis-2027-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor shell (Android + iOS) for the BIS 2027 website. Loads the live site; offline badge page is bundled.",
+  "scripts": {
+    "sync:www": "node scripts/sync-www.mjs",
+    "assets": "capacitor-assets generate --iconBackgroundColor=#080D18 --iconBackgroundColorDark=#080D18 --splashBackgroundColor=#080D18 --splashBackgroundColorDark=#080D18",
+    "cap:sync": "npm run sync:www && cap sync",
+    "doctor": "cap doctor",
+    "android:open": "cap open android",
+    "ios:open": "cap open ios",
+    "check:config": "node scripts/check-config.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.0.0"
+  }
+}
