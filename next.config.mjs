@@ -23,6 +23,16 @@ const nextConfig = {
         ]
       },
       {
+        // The participant area is personal and its content differs for the
+        // mobile app (the badge page may carry the owner's own token): never
+        // store it in any shared or browser cache, and vary by User-Agent.
+        source: "/compte/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "Vary", value: "User-Agent" }
+        ]
+      },
+      {
         source: "/manifest.webmanifest",
         headers: [
           { key: "Content-Type", value: "application/manifest+json" },

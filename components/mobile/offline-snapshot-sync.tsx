@@ -27,6 +27,8 @@ type SnapshotInput = {
 };
 
 type Core = {
+  inApp: () => boolean;
+  postToApp: (m: unknown) => boolean;
   build: (i: SnapshotInput, now?: Date) => unknown;
   save: (s: unknown) => Promise<boolean>;
   clear: () => Promise<void>;
@@ -46,7 +48,17 @@ function readOptOut(): boolean {
   }
 }
 
-export function OfflineSnapshotSync({ data }: { data: SnapshotInput }) {
+// `appToken` is the participant's own raw QR token, provided by the server
+// ONLY when the page is requested by the mobile app (User-Agent BISApp/…).
+// It is handed straight to the app's secure storage through the WebView bridge
+// and never rendered or stored by the website.
+export function OfflineSnapshotSync({
+  data,
+  appToken
+}: {
+  data: SnapshotInput;
+  appToken?: string | null;
+}) {
   const [enabled, setEnabled] = useState(true);
   const [saved, setSaved] = useState<null | boolean>(null);
 
@@ -64,6 +76,21 @@ export function OfflineSnapshotSync({ data }: { data: SnapshotInput }) {
         setSaved(false);
         return true;
       }
+      if (core.inApp()) {
+        // Mobile app: secure native storage (Keychain/Keystore).
+        if (!appToken) {
+          setSaved(false);
+          return true;
+        }
+        const { qrDataUrl: _qr, ...profile } = data;
+        void _qr;
+        const ok = core.postToApp({
+          type: "bis.snapshot.save",
+          payload: { ...profile, token: appToken }
+        });
+        setSaved(ok);
+        return true;
+      }
       const snap = core.build(data);
       if (!snap) {
         setSaved(false);
@@ -78,7 +105,7 @@ export function OfflineSnapshotSync({ data }: { data: SnapshotInput }) {
       if (run() || tries > 25) clearInterval(t);
     }, 200);
     return () => clearInterval(t);
-  }, [enabled, data]);
+  }, [enabled, data, appToken]);
 
   const toggle = () => {
     const next = !enabled;

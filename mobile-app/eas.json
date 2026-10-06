@@ -1,0 +1,69 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SITE_URL": "https://app.brandimpactsummit.org",
+        "EXPO_PUBLIC_ALLOWED_HOSTS": "app.brandimpactsummit.org,brandimpactsummit.org",
+        "EXPO_PUBLIC_BIS_VARIANT": "public",
+        "BIS_APP_ID": "org.brandimpactsummit.app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SITE_URL": "https://app.brandimpactsummit.org",
+        "EXPO_PUBLIC_ALLOWED_HOSTS": "app.brandimpactsummit.org,brandimpactsummit.org",
+        "EXPO_PUBLIC_BIS_VARIANT": "public",
+        "BIS_APP_ID": "org.brandimpactsummit.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_SITE_URL": "https://app.brandimpactsummit.org",
+        "EXPO_PUBLIC_ALLOWED_HOSTS": "app.brandimpactsummit.org,brandimpactsummit.org",
+        "EXPO_PUBLIC_BIS_VARIANT": "public",
+        "BIS_APP_ID": "org.brandimpactsummit.app"
+      }
+    },
+    "staff-preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SITE_URL": "https://app.brandimpactsummit.org",
+        "EXPO_PUBLIC_ALLOWED_HOSTS": "app.brandimpactsummit.org,brandimpactsummit.org",
+        "EXPO_PUBLIC_BIS_VARIANT": "staff",
+        "BIS_APP_ID": "org.brandimpactsummit.staff"
+      }
+    },
+    "staff-production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_SITE_URL": "https://app.brandimpactsummit.org",
+        "EXPO_PUBLIC_ALLOWED_HOSTS": "app.brandimpactsummit.org,brandimpactsummit.org",
+        "EXPO_PUBLIC_BIS_VARIANT": "staff",
+        "BIS_APP_ID": "org.brandimpactsummit.staff"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

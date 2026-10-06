@@ -6,6 +6,17 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!pathname.startsWith("/admin")) return NextResponse.next();
+
+  // The public participant app (User-Agent "BISApp/") must never reach the
+  // admin console, whatever the client-side filter does. The staff app and
+  // browsers use other User-Agents. (Defence in depth: admin access is still
+  // enforced by session + RBAC on every page and action.)
+  if ((request.headers.get("user-agent") ?? "").includes("BISApp/")) {
+    return new NextResponse("Administration indisponible dans cette application.", {
+      status: 403,
+      headers: { "Cache-Control": "no-store" }
+    });
+  }
   if (pathname.startsWith("/admin/login")) return NextResponse.next();
 
   const token = request.cookies.get("bis_admin_session")?.value;
