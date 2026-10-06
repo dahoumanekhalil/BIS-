@@ -1,7 +1,7 @@
 /*
  * BIS 2027 — offline snapshot core (shared by the website, the PWA and the
  * native app). Plain ES5-compatible JS so it can be served as a static file,
- * loaded in the Capacitor local offline page, AND required from Node tests.
+ * loaded by the in-app WebView, AND required from Node tests.
  *
  * WHAT IT STORES: the participant's own display data needed to show their
  * badge and profile offline — name, organisation, role label, the QR IMAGE
@@ -118,29 +118,40 @@
     return { state: "fresh", ageMs: age };
   }
 
-  // ── storage adapter: native Preferences (via the Capacitor bridge) or localStorage ──
-  function nativePrefs() {
+  // ── Inside the mobile app (Expo WebView) ─────────────────────────────────
+  // The app injects window.__BIS_APP__ = true and provides
+  // window.ReactNativeWebView.postMessage. In that mode the website NEVER
+  // keeps the badge in web storage: the app stores it in the OS Keychain /
+  // Keystore (see mobile-app/src/bridge.ts) and the website only sends
+  // messages. Outside the app (browser / PWA) the localStorage path below is
+  // used, exactly as before.
+  function appBridge() {
     try {
-      var c = root.Capacitor;
-      if (c && typeof c.isNativePlatform === "function" && c.isNativePlatform()) {
-        var p = c.Plugins && c.Plugins.Preferences;
-        if (p && typeof p.get === "function") return p;
-      }
+      var w = root.ReactNativeWebView;
+      if (root.__BIS_APP__ === true && w && typeof w.postMessage === "function") return w;
     } catch (e) {}
     return null;
   }
 
-  function storage() {
-    var p = nativePrefs();
-    if (p) {
-      return {
-        get: function () {
-          return p.get({ key: KEY }).then(function (r) { return r && r.value ? r.value : null; });
-        },
-        set: function (v) { return p.set({ key: KEY, value: v }); },
-        remove: function () { return p.remove({ key: KEY }); }
-      };
+  function postToApp(message) {
+    var b = appBridge();
+    if (!b) return false;
+    try {
+      // The nonce was injected into THIS (main) frame by the app; frames that
+      // never received it cannot talk to the app.
+      var n = root.__BIS_APP_NONCE__;
+      if (typeof n !== "string" || n.length < 16) return false;
+      var out = {};
+      for (var k in message) if (Object.prototype.hasOwnProperty.call(message, k)) out[k] = message[k];
+      out.nonce = n;
+      b.postMessage(JSON.stringify(out));
+      return true;
+    } catch (e) {
+      return false;
     }
+  }
+
+  function storage() {
     return {
       get: function () {
         try { return Promise.resolve(root.localStorage.getItem(KEY)); }
@@ -158,12 +169,15 @@
   }
 
   function save(snapshot) {
+    // In the app the QR image snapshot is never stored by the website.
+    if (appBridge()) return Promise.resolve(false);
     var clean = validate(snapshot);
     if (!clean) return Promise.resolve(false);
     return storage().set(JSON.stringify(clean)).then(function () { return true; });
   }
 
   function load() {
+    if (appBridge()) return Promise.resolve(null);
     return storage().get().then(function (raw) {
       var s = raw ? validate(raw) : null;
       if (raw && !s) return storage().remove().then(function () { return null; });
@@ -172,6 +186,10 @@
   }
 
   function clear() {
+    if (appBridge()) {
+      postToApp({ type: "bis.snapshot.clear" });
+      return Promise.resolve();
+    }
     return storage().remove();
   }
 
@@ -181,6 +199,11 @@
   // is signed in" → always wipe. A snapshot without an owner is treated as
   // foreign and wiped.
   function clearUnlessOwner(ownerKey) {
+    if (appBridge()) {
+      // The app compares against its own secure copy.
+      postToApp({ type: "bis.snapshot.clearUnlessOwner", owner: ownerKey || null });
+      return Promise.resolve(false);
+    }
     return storage().get().then(function (raw) {
       if (!raw) return false;
       var s = validate(raw);
@@ -202,6 +225,8 @@
     save: save,
     load: load,
     clear: clear,
-    clearUnlessOwner: clearUnlessOwner
+    clearUnlessOwner: clearUnlessOwner,
+    inApp: function () { return !!appBridge(); },
+    postToApp: postToApp
   };
 });

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { requireAccount } from "@/lib/account/auth";
 import { getCompteContext } from "@/lib/account/participant";
 import { CompteCard } from "@/components/compte/card";
@@ -109,6 +110,11 @@ export default async function CompteBadgePage() {
   // First issuance only (no-op when any credential history exists).
   await ensureActiveBadge(participant.id);
 
+  // The mobile app identifies itself in the User-Agent (BISApp/…). Only then
+  // is the owner's own raw token handed to the page, so the app can keep an
+  // offline copy in the OS secure storage. Browsers never receive it.
+  const inApp = ((await headers()).get("user-agent") ?? "").includes("BISApp/");
+  let appToken: string | null = null;
   let qrDataUrl: string | null = null;
   let unavailableReason: BadgeUnavailableReason | null = null;
   try {
@@ -117,6 +123,7 @@ export default async function CompteBadgePage() {
       // The token exists only inside the QR image pixels sent to the
       // browser; it is never passed as a string and never logged.
       qrDataUrl = await renderBadgeQrDataUrl(current.rawToken);
+      if (inApp) appToken = current.rawToken;
     } else {
       unavailableReason = current.reason;
     }
@@ -162,6 +169,7 @@ export default async function CompteBadgePage() {
       // at logout / after 14 days). Only rendered with a valid, current QR.
       <div className="mx-auto mt-6 max-w-md">
         <OfflineSnapshotSync
+          appToken={appToken}
           data={{
             firstName: participant.firstName,
             lastName: participant.lastName,

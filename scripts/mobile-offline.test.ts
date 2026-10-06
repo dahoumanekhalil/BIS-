@@ -157,30 +157,45 @@ describe("offline storage adapters", () => {
     assert.equal(store.size, 0);
   });
 
-  test("native: uses the Capacitor Preferences bridge when running natively", async () => {
-    const mem = new Map<string, string>();
-    const Preferences = {
-      get: async ({ key }: { key: string }) => ({ value: mem.get(key) ?? null }),
-      set: async ({ key, value }: { key: string; value: string }) => void mem.set(key, value),
-      remove: async ({ key }: { key: string }) => void mem.delete(key)
-    };
+  test("mobile app: the website never stores the badge; it messages the app instead", async () => {
+    const sent: any[] = [];
     const { core, store } = await loadCore({
-      Capacitor: { isNativePlatform: () => true, Plugins: { Preferences } }
+      __BIS_APP__: true,
+      __BIS_APP_NONCE__: "6f1c2f1e-9b7a-4a0e-9c1e-0123456789ab",
+      ReactNativeWebView: { postMessage: (m: string) => sent.push(JSON.parse(m)) }
     });
-    await core.save(core.build(good));
-    assert.equal(mem.size, 1, "stored natively");
-    assert.equal(store.size, 0, "not in web storage");
-    assert.equal((await core.load()).firstName, "Amine");
+    assert.equal(core.inApp(), true);
+    assert.equal(await core.save(core.build(good)), false, "no web-side storage inside the app");
+    assert.equal(store.size, 0);
+    assert.equal(await core.load(), null);
     await core.clear();
-    assert.equal(mem.size, 0);
+    await core.clearUnlessOwner("0123456789abcdef01234567");
+    await core.clearUnlessOwner(null);
+    const N = "6f1c2f1e-9b7a-4a0e-9c1e-0123456789ab";
+    assert.deepEqual(sent, [
+      { type: "bis.snapshot.clear", nonce: N },
+      { type: "bis.snapshot.clearUnlessOwner", owner: "0123456789abcdef01234567", nonce: N },
+      { type: "bis.snapshot.clearUnlessOwner", owner: null, nonce: N }
+    ]);
   });
 
-  test("Capacitor present but NOT native → web storage", async () => {
-    const { core, store } = await loadCore({
-      Capacitor: { isNativePlatform: () => false, Plugins: {} }
+  test("in the app WITHOUT the nonce nothing is sent (frames that never got it stay silent)", async () => {
+    const sent: any[] = [];
+    const { core } = await loadCore({
+      __BIS_APP__: true,
+      ReactNativeWebView: { postMessage: (m: string) => sent.push(JSON.parse(m)) }
     });
+    await core.clear();
+    assert.deepEqual(sent, []);
+  });
+
+  test("a bridge without the app flag (or a foreign page object) is NOT treated as the app", async () => {
+    const { core, store } = await loadCore({
+      ReactNativeWebView: { postMessage: () => {} } // flag missing
+    });
+    assert.equal(core.inApp(), false);
     await core.save(core.build(good));
-    assert.equal(store.size, 1);
+    assert.equal(store.size, 1, "falls back to normal web storage");
   });
 });
 
@@ -377,10 +392,11 @@ describe("offline page + manifest — static safety", () => {
     assert.equal(core.build({ ...good, owner: "<script>" }), null);
   });
 
-  test("workflow validates inputs and only runs from main", async () => {
+  test("release workflow: main only, EAS cloud build, signing not in GitHub secrets", async () => {
     const wf = await read(".github/workflows/mobile.yml");
     assert.ok(wf.includes("github.ref == 'refs/heads/main'"));
-    assert.ok(/bad version_name/.test(wf) && /bad version_code/.test(wf));
+    assert.ok(wf.includes("eas build") && wf.includes("check-release.mjs"));
+    assert.equal(/keystore|.p12|.p8/i.test(wf.replace(/#.*$/gm, "")), false);
   });
 
   test("snapshot sync is rendered only with a QR; runtime clears when signed out", async () => {
