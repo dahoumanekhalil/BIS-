@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#2453E0" />
+    <meta name="robots" content="noindex" />
+    <title>Hors ligne · BIS 2027</title>
+    <style>
+      :root { --cobalt:#2453E0; --lime:#B8E62E; --ink:#0A0A0A; --navy:#080D18; --frost:#F8FAF9; --line:#E6E8ED; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--navy); color: #fff;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        -webkit-text-size-adjust: 100%;
+      }
+      main { max-width: 420px; margin: 0 auto; padding: 20px 16px 32px; }
+      .bar { display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px; }
+      .brand { font-weight: 900; letter-spacing: .02em; }
+      .pill { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+              background: rgba(255,255,255,.12); padding: 4px 10px; border-radius: 999px; }
+      .card { background: #fff; color: var(--ink); border-radius: 20px; padding: 22px 18px; text-align: center; }
+      .role { display:inline-block; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+              background: var(--cobalt); color: #fff; padding: 4px 12px; border-radius: 999px; }
+      h1 { font-size: 24px; line-height: 1.15; margin: 12px 0 2px; font-weight: 900; }
+      .sub { margin: 0; color: #55606f; font-size: 14px; }
+      .qr { display:block; margin: 18px auto 10px; width: min(280px, 72vw); height: auto; aspect-ratio: 1; image-rendering: pixelated; }
+      .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .12em; font-size: 15px; }
+      .meta { margin-top: 14px; font-size: 12px; color: #55606f; }
+      .warn { margin-top: 14px; background: #FFF7E0; color: #7A5200; border: 1px solid #F3D68A; padding: 10px 12px; border-radius: 12px; font-size: 13px; text-align: left; }
+      .info { margin-top: 16px; background: rgba(255,255,255,.08); border-radius: 14px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #D5DBE6; }
+      .btn { margin-top: 16px; display:inline-block; background: var(--lime); color: var(--ink); font-weight: 800; border: 0; border-radius: 12px;
+             padding: 13px 20px; font-size: 14px; width: 100%; }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="bar">
+        <span class="brand">BIS 2027</span>
+        <span class="pill">Hors ligne</span>
+      </div>
+
+      <section id="badge" class="card hidden" aria-live="polite">
+        <span id="role" class="role"></span>
+        <h1 id="name"></h1>
+        <p class="sub" id="org"></p>
+        <img id="qr" class="qr" alt="Votre QR code d'accès" width="280" height="280" />
+        <div class="code" id="code"></div>
+        <p class="meta" id="synced"></p>
+        <div id="stale" class="warn hidden">
+          Ce badge n'a pas été actualisé récemment. Si l'équipe BIS l'a remplacé,
+          l'ancien QR ne sera plus accepté : reconnectez-vous dès que possible.
+        </div>
+      </section>
+
+      <section id="profile" class="card hidden" style="margin-top:12px;text-align:left">
+        <h2 style="margin:0 0 8px;font-size:15px;font-weight:900">Mon profil</h2>
+        <dl id="profile-list" style="margin:0"></dl>
+      </section>
+
+      <section id="none" class="card hidden">
+        <h1 id="none-title">Aucun badge enregistré</h1>
+        <p class="sub" id="none-text"></p>
+      </section>
+
+      <p class="info hidden" id="admin-note">
+        L'espace d'administration nécessite une connexion Internet.
+      </p>
+
+      <button class="btn" id="retry" type="button">Réessayer la connexion</button>
+    </main>
+    <script src="/offline-core.js"></script>
+    <script src="/offline.js"></script>
+  </body>
+</html>

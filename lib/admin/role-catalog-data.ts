@@ -43,6 +43,8 @@ export type StaffModule = {
   description: string;
   category: ModuleCategory;
   ops: Partial<Record<Op, string>>;
+  // Optional module-specific wording for an op (tooltips / legend).
+  opLabels?: Partial<Record<Op, string>>;
 };
 
 export const STAFF_MODULES: StaffModule[] = [
@@ -74,6 +76,23 @@ export const STAFF_MODULES: StaffModule[] = [
     ops: {
       read: "checkin.view",
       update: "checkin.validate"
+    }
+  },
+  {
+    key: "badges",
+    label: "Badges & QR code",
+    description:
+      "QR code des participants : afficher, régénérer (l'ancien est invalidé) ou révoquer.",
+    category: "Attendees",
+    ops: {
+      read: "badge.view",
+      update: "badge.regenerate",
+      delete: "badge.manage"
+    },
+    opLabels: {
+      read: "Afficher le QR actuel",
+      update: "Régénérer le QR",
+      delete: "Révoquer le badge"
     }
   },
   {

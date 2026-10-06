@@ -1,0 +1,20 @@
+{
+  "name": "BIS 2027 — Algeria Brand Impact Summit",
+  "short_name": "BIS 2027",
+  "description": "Votre compte, votre badge et le programme du sommet BIS 2027.",
+  "id": "/",
+  "start_url": "/compte/badge",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "fr",
+  "dir": "ltr",
+  "theme_color": "#2453E0",
+  "background_color": "#080D18",
+  "categories": ["events", "business"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

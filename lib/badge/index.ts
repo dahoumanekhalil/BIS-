@@ -2,10 +2,12 @@ export {
   issueBadgeCredential,
   verifyBadgeToken,
   revokeBadgeCredential,
-  rotateBadgeCredential,
+  regenerateBadgeCredential,
+  getCurrentBadgeToken,
   type IssueResult,
-  type RotateResult,
+  type RegenerateResult,
   type RevokeResult,
-  type VerifyResult
+  type VerifyResult,
+  type CurrentTokenResult
 } from "./service";
 export { BadgeError, type BadgeErrorCode } from "./errors";

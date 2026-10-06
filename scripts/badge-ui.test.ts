@@ -146,7 +146,8 @@ describe("Phase 18 — QR lifecycle isolation", () => {
       // Also ban direct references to lifecycle functions.
       for (const banned of [
         "issueBadgeCredential",
-        "rotateBadgeCredential",
+        "regenerateBadgeCredential",
+        "getCurrentBadgeToken",
         "revokeBadgeCredential",
         "verifyBadgeToken",
         "hashBadgeToken",
@@ -290,65 +291,70 @@ describe("useBadgeExport — never triggers credential lifecycle", () => {
   });
 });
 
-// ─── Structural — badge-qr-client credential flow preserved ───────────
+// ─── Structural — subscriber badge client is VIEW ONLY ────────────────
 
-describe("badge-qr-client — Phase 5 credential flow preserved byte-for-byte", () => {
-  test("still uses useActionState + generateOrRotateMyBadge", async () => {
-    const src = await readFile(
+describe("badge-qr-client — subscriber QR is view-only", () => {
+  const readClient = () =>
+    readFile(
       new URL("../components/compte/badge-qr-client.tsx", import.meta.url),
       "utf8"
     );
-    assert.ok(src.includes("useActionState"));
-    assert.ok(src.includes("generateOrRotateMyBadge"));
+
+  test("no server action, no action state, no form", async () => {
+    const src = await readClient();
+    assert.equal(src.includes("useActionState"), false);
+    assert.equal(/generateOrRotateMyBadge\s*[(,]/.test(src), false);
+    assert.equal(src.includes("app/compte/badge/actions"), false);
+    assert.equal(src.includes("<form"), false);
   });
 
-  test("still shows Régénérer / Afficher / Générer labels", async () => {
-    const src = await readFile(
-      new URL("../components/compte/badge-qr-client.tsx", import.meta.url),
-      "utf8"
-    );
-    assert.ok(src.includes("Régénérer mon QR"));
-    assert.ok(src.includes("Afficher mon QR"));
-    assert.ok(src.includes("Générer mon badge"));
+  test("no regenerate / generate controls remain", async () => {
+    const src = await readClient();
+    assert.equal(src.includes("Régénérer mon QR"), false);
+    assert.equal(src.includes("Générer mon badge"), false);
+    assert.equal(src.includes("Afficher mon QR"), false);
   });
 
   test("wake-lock hook still wired", async () => {
-    const src = await readFile(
-      new URL("../components/compte/badge-qr-client.tsx", import.meta.url),
-      "utf8"
-    );
+    const src = await readClient();
     assert.ok(src.includes("useScreenWakeLock"));
   });
 
   test("export buttons are gated on displayQr — no export without QR", async () => {
-    const src = await readFile(
-      new URL("../components/compte/badge-qr-client.tsx", import.meta.url),
-      "utf8"
-    );
-    // Every export button uses `!displayQr` or `exp.busy` in the
-    // `disabled=` prop.
-    const disabledCount = (src.match(/disabled=\{!displayQr/g) ?? []).length;
-    assert.ok(
-      disabledCount >= 3,
-      "PNG-front / PNG-back / PDF / print must all gate on !displayQr"
-    );
+    const src = await readClient();
+    const disabledCount = (src.match(/disabled={!displayQr/g) ?? []).length;
+    assert.ok(disabledCount >= 3, "PNG-front / PNG-back / PDF / print must gate on !displayQr");
   });
 });
 
-// ─── Structural — server-side helpers unchanged ───────────────────────
+// ─── Structural — server-side policy surface ──────────────────────────
 
-describe("Phase 5 server action and Phase 2 service — untouched", () => {
-  test("app/compte/badge/actions.ts still uses rotateBadgeCredential and audits badge.rotate.self", async () => {
+describe("Subscriber server surface cannot mutate credentials", () => {
+  test("app/compte/badge/actions.ts is a hard-deny stub with no badge-service import", async () => {
     const src = await readFile(
       new URL("../app/compte/badge/actions.ts", import.meta.url),
       "utf8"
     );
-    // Sanity: Phase 5 pipeline is intact — same rotation, same audit
-    // action, same rate limit.
-    assert.ok(src.includes("rotateBadgeCredential"));
-    assert.ok(src.includes("badge.rotate.self"));
-    assert.ok(src.includes("MIN_ROTATION_INTERVAL_MS"));
-    // No badge/service mutation moved to the UI side.
-    assert.ok(src.includes("verifyBadgeToken") === false);
+    assert.equal(src.includes("@/lib/badge"), false);
+    const code = src
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("//"))
+      .join("\n")
+      .replace(/generateOrRotateMyBadge/g, "");
+    assert.equal(/rotate|regenerate|issueBadge|revokeBadge/i.test(code), false);
+    assert.ok(src.includes("FORBIDDEN"));
+  });
+
+  test("app/compte/badge/page.tsx is read-only (no rotate/regenerate/revoke call)", async () => {
+    const src = await readFile(
+      new URL("../app/compte/badge/page.tsx", import.meta.url),
+      "utf8"
+    );
+    assert.equal(src.includes("regenerateBadgeCredential"), false);
+    assert.equal(src.includes("revokeBadgeCredential"), false);
+    assert.equal(src.includes("rotateBadgeCredential"), false);
+    assert.equal(src.includes("generateOrRotateMyBadge"), false);
   });
 });
+
+

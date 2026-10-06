@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAccount } from "@/lib/account/auth";
 import { logoutAccount } from "@/app/actions/account";
 import { CompteCard, CompteRow } from "@/components/compte/card";
+import { DeleteAccountCard } from "@/components/compte/delete-account-card";
 
 export const metadata = { title: "Sécurité" };
 
@@ -53,6 +54,17 @@ export default async function CompteSecuritePage() {
             .
           </p>
         </div>
+      </CompteCard>
+
+      <CompteCard eyebrow="Données personnelles" title="Supprimer mon compte" className="lg:col-span-2">
+        <DeleteAccountCard />
+        <p className="mt-4 text-[11.5px] leading-relaxed text-ink/50">
+          Voir la{" "}
+          <Link href="/confidentialite" className="font-semibold text-cobalt hover:text-cobalt-700">
+            politique de confidentialité
+          </Link>
+          .
+        </p>
       </CompteCard>
     </div>
   );

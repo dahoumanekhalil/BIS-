@@ -1,5 +1,5 @@
 // Focused tests for lib/badge/service.ts. Run with:
-//   npx tsx --test scripts/badge-credential.test.ts
+//   npm run test:badge   (needs DATABASE_URL pointing at a THROWAWAY database)
 //
 // Uses node's built-in test runner (no framework dependency) and the LOCAL
 // Postgres already used by the app. Every test creates its own Participant
@@ -22,13 +22,17 @@ import {
 import {
   BadgeError,
   issueBadgeCredential,
+  regenerateBadgeCredential,
   revokeBadgeCredential,
-  rotateBadgeCredential,
   verifyBadgeToken
 } from "../lib/badge";
 import { hashPassword } from "../lib/admin/password";
 
 const prisma = new PrismaClient();
+
+// Test-only secret (not a real credential). Read lazily by lib/badge/token.
+process.env.BADGE_QR_TOKEN_SECRET =
+  "test-only-badge-qr-secret-0123456789abcdef0123456789abcdef";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────
 
@@ -272,36 +276,45 @@ describe("revokeBadgeCredential", () => {
   });
 });
 
-// ─── rotate ───────────────────────────────────────────────────────────────
+// ─── regenerate (admin only) ──────────────────────────────────────────────
 
-describe("rotateBadgeCredential", () => {
+describe("regenerateBadgeCredential", () => {
   test("revokes the previous ACTIVE, creates a new ACTIVE, and chains rotatedFromId", async () => {
     const first = await issueBadgeCredential(participantId);
-    const second = await rotateBadgeCredential(
+    const second = await regenerateBadgeCredential({
       participantId,
       adminId,
-      "renewal"
-    );
+      reason: "renewal test",
+      expectedCredentialId: first.credentialId
+    });
 
     const oldRow = await prisma.badgeCredential.findUnique({
       where: { id: first.credentialId }
     });
     assert.equal(oldRow?.status, "REVOKED");
-    assert.equal(oldRow?.revokedReason, "renewal");
+    assert.equal(oldRow?.revokedReason, "renewal test");
     assert.equal(oldRow?.revokedById, adminId);
 
     const newRow = await prisma.badgeCredential.findUnique({
       where: { id: second.credentialId }
     });
     assert.equal(newRow?.status, "ACTIVE");
+    assert.equal(newRow?.participantId, participantId);
     assert.equal(newRow?.rotatedFromId, first.credentialId);
+    assert.equal(newRow?.createdById, adminId);
+    assert.equal(newRow?.sequence, 2);
     assert.equal(second.previousCredentialId, first.credentialId);
     assert.notEqual(first.rawToken, second.rawToken);
   });
 
-  test("verifies the new token and rejects the old one after rotation", async () => {
+  test("verifies the new token and rejects the old one after regeneration", async () => {
     const first = await issueBadgeCredential(participantId);
-    const second = await rotateBadgeCredential(participantId);
+    const second = await regenerateBadgeCredential({
+      participantId,
+      adminId,
+      reason: "second test",
+      expectedCredentialId: first.credentialId
+    });
 
     const oldR = await verifyBadgeToken(first.rawToken);
     assert.equal(oldR.ok, false);
@@ -311,28 +324,47 @@ describe("rotateBadgeCredential", () => {
     assert.equal(newR.ok, true);
   });
 
-  test("rotate with no prior credential behaves like issue and sets previousCredentialId=null", async () => {
-    const r = await rotateBadgeCredential(participantId);
-    assert.equal(r.previousCredentialId, null);
-    const row = await prisma.badgeCredential.findUnique({
-      where: { id: r.credentialId }
-    });
-    assert.equal(row?.status, "ACTIVE");
-    assert.equal(row?.rotatedFromId, null);
+  test("requires a meaningful reason", async () => {
+    await issueBadgeCredential(participantId);
+    for (const bad of ["", "   ", "abc", "x".repeat(501)]) {
+      await assert.rejects(
+        () =>
+          regenerateBadgeCredential({
+            participantId,
+            adminId,
+            reason: bad,
+            expectedCredentialId: null
+          }),
+        (err: unknown) =>
+          err instanceof BadgeError && err.code === "REASON_REQUIRED"
+      );
+    }
   });
 
   test("throws PARTICIPANT_NOT_FOUND for an unknown participant", async () => {
     await assert.rejects(
-      () => rotateBadgeCredential("no-such-participant"),
+      () =>
+        regenerateBadgeCredential({
+          participantId: "no-such-participant",
+          adminId,
+          reason: "unknown participant",
+          expectedCredentialId: null
+        }),
       (err: unknown) =>
         err instanceof BadgeError && err.code === "PARTICIPANT_NOT_FOUND"
     );
   });
 
-  test("throws ADMIN_NOT_FOUND when revokedById does not resolve", async () => {
-    await issueBadgeCredential(participantId);
+  test("throws ADMIN_NOT_FOUND when the admin does not resolve", async () => {
+    const first = await issueBadgeCredential(participantId);
     await assert.rejects(
-      () => rotateBadgeCredential(participantId, "no-such-admin", "x"),
+      () =>
+        regenerateBadgeCredential({
+          participantId,
+          adminId: "no-such-admin",
+          reason: "unknown admin",
+          expectedCredentialId: first.credentialId
+        }),
       (err: unknown) =>
         err instanceof BadgeError && err.code === "ADMIN_NOT_FOUND"
     );
@@ -363,8 +395,12 @@ describe("partial unique index (DB-level guarantee)", () => {
 
   test("multiple REVOKED credentials per participant are permitted (history)", async () => {
     const first = await issueBadgeCredential(participantId);
-    await revokeBadgeCredential(first.credentialId);
-    const second = await issueBadgeCredential(participantId);
+    const second = await regenerateBadgeCredential({
+      participantId,
+      adminId,
+      reason: "history test 1",
+      expectedCredentialId: first.credentialId
+    });
     await revokeBadgeCredential(second.credentialId);
     const rows = await prisma.badgeCredential.findMany({
       where: { participantId, status: "REVOKED" }
@@ -400,24 +436,29 @@ describe("AuditLog integration", () => {
     assert.equal(meta?.reason, "audit-test");
   });
 
-  test("rotate writes badge.rotate with both credential ids", async () => {
+  test("regenerate writes badge.regenerate atomically with both ids, actor and reason (no token)", async () => {
     const first = await issueBadgeCredential(participantId);
-    const second = await rotateBadgeCredential(
+    const second = await regenerateBadgeCredential({
       participantId,
       adminId,
-      "audit-rotate"
-    );
+      reason: "audit-regenerate",
+      expectedCredentialId: first.credentialId
+    });
     const log = await prisma.auditLog.findFirst({
-      where: { action: "badge.rotate", entityId: participantId },
+      where: { action: "badge.regenerate", entityId: participantId },
       orderBy: { createdAt: "desc" }
     });
     assert.ok(log);
+    assert.equal(log?.userId, adminId);
     const meta = log?.meta as {
       newCredentialId?: string;
-      previousCredentialId?: string | null;
+      oldCredentialId?: string | null;
+      reason?: string;
     } | null;
     assert.equal(meta?.newCredentialId, second.credentialId);
-    assert.equal(meta?.previousCredentialId, first.credentialId);
+    assert.equal(meta?.oldCredentialId, first.credentialId);
+    assert.equal(meta?.reason, "audit-regenerate");
+    assert.equal(JSON.stringify(log?.meta).includes(second.rawToken), false);
   });
 
   test("idempotent revoke does NOT double-audit", async () => {

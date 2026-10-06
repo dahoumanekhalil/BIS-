@@ -1,12 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { deleteAccountData } from "@/lib/account/delete-account";
 import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/admin/password";
 import {
   createAccountSession,
   setAccountCookie,
-  destroyAccountSession
+  destroyAccountSession,
+  requireAccount
 } from "@/lib/account/auth";
 import { endOnboardingSession } from "@/lib/onboarding";
 import { accountLoginSchema, accountRegisterSchema } from "@/lib/validations";
@@ -20,6 +23,8 @@ import {
 import { clientIp } from "@/lib/client-ip";
 import { issueEmailVerificationToken } from "@/lib/account/email-verification";
 import { sendVerificationEmail } from "@/lib/email/triggers/auth";
+import { isEmailRateLimited, RATE_LIMITS } from "@/lib/email/rate-limit";
+
 
 export type AccountActionResult =
   | { ok: true }
@@ -99,6 +104,11 @@ export async function registerAccount(
 
   record(ipKey);
 
+  // NOTE: no Participant / QR is created here. The QR badge is issued
+  // automatically once the email is VERIFIED (see
+  // consumeEmailVerificationToken), so an unverified signup cannot reserve
+  // someone else's (event, email) slot or obtain a credential.
+
   // Verification email. Failure here MUST NOT roll back the successful
   // signup (spec §26) — the account is usable without verification, and
   // the user can request a new verification link later. We catch every
@@ -124,6 +134,107 @@ export async function registerAccount(
   const token = await createAccountSession(user.id, true);
   await setAccountCookie(token, true);
   return { ok: true };
+}
+
+export type ResendVerificationResult = { ok: boolean; message: string };
+
+const RESENDS_PER_IP = 10;
+
+// Re-send the email-confirmation link to the CURRENT account (identity from
+// the session — no client-supplied id/email). Per-IP throttle here plus the
+// per-recipient budget inside sendVerificationEmail. Answers are generic:
+// nothing about other accounts is ever revealed.
+export async function resendVerificationEmail(): Promise<ResendVerificationResult> {
+  const account = await requireAccount();
+
+  const current = await prisma.accountUser.findUnique({
+    where: { id: account.id },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      emailVerifiedAt: true
+    }
+  });
+  if (!current) return { ok: false, message: "Compte introuvable." };
+  if (current.emailVerifiedAt) {
+    return { ok: true, message: "Votre adresse email est déjà confirmée." };
+  }
+
+  const ip = await clientIp();
+  const ipKey = `resend-verify:ip:${ip ?? "shared"}`;
+  if (isBlocked(ipKey, RESENDS_PER_IP)) {
+    return { ok: false, message: THROTTLED_MESSAGE };
+  }
+  record(ipKey);
+
+  // Check the budgets BEFORE writing a token row, so rejected requests
+  // cannot pile up live tokens: per-recipient budget (same as the sender)
+  // plus a DB-backed 60 s cooldown that survives restarts / many instances.
+  if (
+    isEmailRateLimited({
+      bucket: "verify",
+      key: current.email.toLowerCase(),
+      limit: RATE_LIMITS.verify
+    })
+  ) {
+    return {
+      ok: false,
+      message:
+        "Trop de demandes pour cette adresse. Réessayez dans quelques minutes."
+    };
+  }
+  const recent = await prisma.emailVerificationToken.findFirst({
+    where: {
+      userId: current.id,
+      usedAt: null,
+      createdAt: { gt: new Date(Date.now() - 60_000) }
+    },
+    select: { id: true }
+  });
+  if (recent) {
+    return {
+      ok: false,
+      message: "Un lien vient d'être envoyé. Patientez une minute avant de réessayer."
+    };
+  }
+
+  try {
+    const issued = await issueEmailVerificationToken({
+      userId: current.id,
+      email: current.email
+    });
+    const sent = await sendVerificationEmail({
+      userId: current.id,
+      email: current.email,
+      firstName: current.firstName,
+      lastName: current.lastName,
+      rawToken: issued.rawToken,
+      expiresAt: issued.expiresAt
+    });
+    if (!sent.ok) {
+      return {
+        ok: false,
+        message:
+          "Trop de demandes pour cette adresse. Réessayez dans quelques minutes."
+      };
+    }
+    return {
+      ok: true,
+      message: "Lien envoyé. Vérifiez votre boîte email (et les spams)."
+    };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[account] resend verification failed:",
+      err instanceof Error ? err.name : "unknown"
+    );
+    return {
+      ok: false,
+      message: "Envoi impossible pour le moment. Réessayez plus tard."
+    };
+  }
 }
 
 export async function loginAccount(
@@ -189,4 +300,75 @@ export async function logoutAccount() {
   await endOnboardingSession();
   await destroyAccountSession();
   redirect("/");
+}
+
+// ─── Delete my account (store requirement: in-app, self-service) ──────────
+//
+// Identity comes from the session. The caller must re-enter the PASSWORD and
+// type the confirmation word, so a hijacked session cookie or a stray tap
+// cannot erase an account. Failed attempts are throttled per account and per
+// IP. What is erased / anonymised is described in lib/account/delete-account.ts.
+
+const deleteAccountSchema = z.object({
+  password: z.string().min(1).max(200),
+  confirm: z.literal("SUPPRIMER")
+});
+
+const DELETE_FAILS_PER_ACCOUNT = 5;
+const DELETE_FAILS_PER_IP = 20;
+
+export type DeleteAccountActionResult = { ok: false; message: string };
+
+export async function deleteMyAccount(
+  input: unknown
+): Promise<DeleteAccountActionResult> {
+  const account = await requireAccount();
+
+  const parsed = deleteAccountSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Saisissez votre mot de passe et le mot « SUPPRIMER »."
+    };
+  }
+
+  const ip = await clientIp();
+  const acctKey = `delete-account:acct:${account.id}`;
+  const ipKey = ip ? `delete-account:ip:${ip}` : null;
+  if (isBlocked(acctKey, DELETE_FAILS_PER_ACCOUNT) || isBlocked(ipKey, DELETE_FAILS_PER_IP)) {
+    return { ok: false, message: THROTTLED_MESSAGE };
+  }
+
+  const row = await prisma.accountUser.findUnique({
+    where: { id: account.id },
+    select: { passwordHash: true }
+  });
+  // Same amount of work whether or not the row exists.
+  let ok = false;
+  if (row) ok = verifyPassword(parsed.data.password, row.passwordHash);
+  else verifyPassword(parsed.data.password, DUMMY_HASH);
+  if (!ok) {
+    record(acctKey);
+    record(ipKey);
+    return { ok: false, message: "Mot de passe incorrect." };
+  }
+
+  try {
+    await deleteAccountData(account.id);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[account] delete failed:",
+      err instanceof Error ? err.name : "unknown"
+    );
+    return {
+      ok: false,
+      message: "Suppression impossible pour le moment. Aucune donnée n'a été modifiée."
+    };
+  }
+
+  reset(acctKey);
+  await endOnboardingSession();
+  await destroyAccountSession(); // cookie (the session row is already gone)
+  redirect("/?compte=supprime");
 }

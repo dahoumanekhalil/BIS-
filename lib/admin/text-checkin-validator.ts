@@ -237,6 +237,13 @@ async function validate(
       tier: true,
       status: true,
       ticketCode: true,
+      // Latest credential only — used to honour an administrative REVOKE
+      // of the badge (see "revoked badge" gate below).
+      credentials: {
+        orderBy: [{ issuedAt: "desc" }, { id: "desc" }],
+        take: 1,
+        select: { status: true, expiresAt: true }
+      },
       accessPermissions: {
         where: { accessPointId: point.id },
         select: { granted: true }
@@ -255,6 +262,39 @@ async function validate(
       accessPointType: point.type,
       result: CheckInResult.UNKNOWN,
       reason: "TEXT_UNKNOWN"
+    });
+    return {
+      ok: false,
+      outcome: "BADGE_INVALID",
+      message: MESSAGES.TEXT_INVALID
+    };
+  }
+
+  // Revoked-badge gate. The text code is printed on the same badge as the
+  // QR (it is the QR fallback), so an administrative revoke of the badge
+  // must also stop the text code. "Revoked" = the participant's LATEST
+  // credential is REVOKED (a regeneration always leaves a new ACTIVE one,
+  // so this is only true after an admin revoke). Participants with no
+  // credential history are unaffected. Same generic response as an unknown
+  // code — no oracle. NOT covered: the legacy ticketCode / id check-in
+  // (/admin/check-in), an independent operator workflow.
+  const latestCred = participant.credentials[0];
+  if (
+    latestCred &&
+    (latestCred.status === "REVOKED" ||
+      latestCred.status === "EXPIRED" ||
+      (latestCred.expiresAt !== null &&
+        latestCred.expiresAt.getTime() <= Date.now()))
+  ) {
+    record(ipKey);
+    record(opKey);
+    await auditText({
+      userId: user.id,
+      accessPointId: point.id,
+      accessPointSlug: point.slug,
+      accessPointType: point.type,
+      result: CheckInResult.UNKNOWN,
+      reason: "TEXT_BADGE_REVOKED"
     });
     return {
       ok: false,

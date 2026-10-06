@@ -144,6 +144,90 @@ export const ROLE_CATALOG: RoleCard[] = [
       "Voit la liste des inscrits et peut agir dessus — modifier, renvoyer un ticket, relancer par email."
   },
   {
+    key: "registration_manager",
+    kind: "staff",
+    adminRole: AdminRole.REGISTRATION_MANAGER,
+    name: "Registration Manager",
+    tag: "Staff · Inscriptions",
+    tone: "cobalt",
+    initials: "RM",
+    headline: "Pilote les inscriptions et les accès.",
+    summary:
+      "Gère les inscrits, les candidatures et les accès par salle. Peut révoquer un badge ; l'affichage ou la régénération du QR se règle ici."
+  },
+  {
+    key: "checkin_operator",
+    kind: "staff",
+    adminRole: AdminRole.CHECKIN_OPERATOR,
+    name: "Check-in Operator",
+    tag: "Staff · Terrain",
+    tone: "lime",
+    initials: "CO",
+    headline: "Scanne les badges aux portes.",
+    summary:
+      "Opérateur de scan : valide les entrées. Aucun droit sur les QR codes des participants (verrouillé pour des raisons de sécurité)."
+  },
+  {
+    key: "content_manager",
+    kind: "staff",
+    adminRole: AdminRole.CONTENT_MANAGER,
+    name: "Content Manager",
+    tag: "Staff · Contenu",
+    tone: "navy",
+    initials: "CM",
+    headline: "Gère le programme et les contenus.",
+    summary:
+      "Sessions, intervenants, itinéraires et contenus du site. Aucun accès aux participants sensibles."
+  },
+  {
+    key: "sponsor_manager",
+    kind: "staff",
+    adminRole: AdminRole.SPONSOR_MANAGER,
+    name: "Sponsor Manager",
+    tag: "Staff · Partenaires",
+    tone: "gold",
+    initials: "SM",
+    headline: "Gère les sponsors et partenaires.",
+    summary:
+      "Fiches sponsors et partenaires du sommet."
+  },
+  {
+    key: "finance",
+    kind: "staff",
+    adminRole: AdminRole.FINANCE,
+    name: "Finance",
+    tag: "Staff · Finance",
+    tone: "silver",
+    initials: "FN",
+    headline: "Accès financier limité.",
+    summary:
+      "Rôle conservé pour la compatibilité ; BIS 2027 est gratuit, aucune opération de paiement."
+  },
+  {
+    key: "analytics",
+    kind: "staff",
+    adminRole: AdminRole.ANALYTICS,
+    name: "Analytics",
+    tag: "Staff · Lecture",
+    tone: "slate",
+    initials: "AN",
+    headline: "Consulte les métriques.",
+    summary:
+      "Tableaux de bord et analytics en lecture seule. Aucun droit sur les QR codes (verrouillé)."
+  },
+  {
+    key: "viewer",
+    kind: "staff",
+    adminRole: AdminRole.VIEWER,
+    name: "Viewer",
+    tag: "Staff · Lecture seule",
+    tone: "rose",
+    initials: "VW",
+    headline: "Lecture seule.",
+    summary:
+      "Consultation limitée du back-office. Aucun droit sur les QR codes (verrouillé)."
+  },
+  {
     key: "vvip",
     kind: "attendee",
     tier: RegistrationTier.VVIP,
@@ -207,9 +291,16 @@ export type ModuleAccess = {
   grantedOps: number;
 };
 
-/** For staff roles: derive granted ops per module from ROLE_PERMISSIONS. */
-export function computeStaffAccess(role: AdminRole): ModuleAccess[] {
-  const perms = new Set<Permission>(ROLE_PERMISSIONS[role]);
+/**
+ * For staff roles: derive granted ops per module. Pass `effective` (from
+ * getEffectivePermissions) to include saved RolePermissionOverride rows and
+ * the hard exclusions; without it only the baseline map is used.
+ */
+export function computeStaffAccess(
+  role: AdminRole,
+  effective?: readonly Permission[]
+): ModuleAccess[] {
+  const perms = new Set<Permission>(effective ?? ROLE_PERMISSIONS[role]);
   return STAFF_MODULES.map((m) => {
     const granted: Partial<Record<Op, true>> = {};
     let grantedOps = 0;
@@ -264,8 +355,11 @@ export function getRoleCard(key: RoleId): RoleCard | undefined {
   return ROLE_CATALOG.find((r) => r.key === key);
 }
 
-export function getAccessForRole(card: RoleCard): ModuleAccess[] {
+export function getAccessForRole(
+  card: RoleCard,
+  effective?: readonly Permission[]
+): ModuleAccess[] {
   return card.kind === "staff"
-    ? computeStaffAccess(card.adminRole)
+    ? computeStaffAccess(card.adminRole, effective)
     : computePublicAccess();
 }

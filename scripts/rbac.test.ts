@@ -69,7 +69,7 @@ const RESTRICTED_ROLES = [
 // ─── PERMISSIONS registry ─────────────────────────────────────────────────
 
 describe("PERMISSIONS registry", () => {
-  test("includes each of the five new badge/access permissions", () => {
+  test("includes each of the new badge/access permissions", () => {
     for (const p of NEW_PERMS) {
       assert.ok(PERMISSIONS.includes(p), `PERMISSIONS missing ${p}`);
     }

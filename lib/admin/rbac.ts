@@ -89,6 +89,21 @@ export const PERMISSIONS = [
   // only the legacy permission must not gain automatic scanner access
   // when Phase 10/11 lands. See the strict helpers below.
   "badge.manage",
+  // badge.view — display a participant's CURRENT live QR (read-only, audited,
+  //   rate-limited). Sensitive like regenerate: a live QR lets its viewer
+  //   impersonate the participant at a scanner. Baseline: SUPER_ADMIN and
+  //   ADMIN (via ALL); never CHECKIN_OPERATOR / VIEWER / ANALYTICS.
+  "badge.view",
+  // badge.regenerate — replace a participant's QR credential (revokes the
+  //   old one, issues a new one, rotates the printed text code). The ONLY
+  //   way a QR can change. Baseline: SUPER_ADMIN and ADMIN (via ALL).
+  //   REGISTRATION_MANAGER deliberately does NOT hold it (it can still
+  //   revoke through badge.manage; viewing a QR needs badge.view). Which roles
+  //   hold these is editable in
+  //   Admin → Settings → Badges (roles.manage; audited), stored as
+  //   RolePermissionOverride rows. Subscribers (account
+  //   users) have no admin role and can never obtain it.
+  "badge.regenerate",
   "access.view",
   "access.manage",
   "access.validate.main",
@@ -229,6 +244,39 @@ const ADMIN_DENIED: Permission[] = [
   "backup.replication.settings"
 ];
 
+// Roles that can NEVER hold badge.view / badge.regenerate, whatever the baseline map or a
+// RolePermissionOverride row says. The permission lets its holder display any
+// participant's live QR (impersonation at the scanners), so operational and
+// read-only roles are excluded at authorisation time — this holds even if an
+// override row appears through the role editor, a direct DB write or a
+// backup restore.
+export const BADGE_REGENERATE_FORBIDDEN_ROLES: readonly AdminRole[] = [
+  "CHECKIN_OPERATOR",
+  "VIEWER",
+  "ANALYTICS"
+];
+
+// The permissions that disclose, replace or revoke a live QR. Hard-excluded for
+// the roles above at authorisation time.
+const BADGE_SENSITIVE_PERMISSIONS: readonly Permission[] = [
+  "badge.view",
+  "badge.regenerate",
+  // Revoking denies a participant entry; not for operational / read-only
+  // roles either.
+  "badge.manage"
+];
+
+export function isForbiddenGrant(role: AdminRole, perm: Permission): boolean {
+  return (
+    BADGE_SENSITIVE_PERMISSIONS.includes(perm) &&
+    BADGE_REGENERATE_FORBIDDEN_ROLES.includes(role)
+  );
+}
+
+// Permissions only SUPER_ADMIN may change through the role editor (the ones
+// ADMIN does not hold): prevents delegation chains via roles.manage.
+export const SUPER_ADMIN_ONLY_PERMISSIONS: readonly Permission[] = ADMIN_DENIED;
+
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   SUPER_ADMIN: ALL,
   // Admin: everything except user/role admin AND the destructive backup verbs.
@@ -308,6 +356,9 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
 };
 
 export function can(role: AdminRole, perm: Permission): boolean {
+  // Same hard exclusion as canWithOverrides: a future baseline edit must
+  // not be able to re-open the badge.regenerate hole.
+  if (isForbiddenGrant(role, perm)) return false;
   return ROLE_PERMISSIONS[role].includes(perm);
 }
 
@@ -328,6 +379,7 @@ export async function canWithOverrides(
   role: AdminRole,
   perm: Permission
 ): Promise<boolean> {
+  if (isForbiddenGrant(role, perm)) return false;
   const override = await prisma.rolePermissionOverride.findUnique({
     where: { role_permission: { role, permission: perm } }
   });
@@ -374,11 +426,13 @@ export async function getEffectivePermissions(
   const baseline = ROLE_PERMISSIONS[role] ?? [];
   const result = new Set<Permission>();
   for (const p of baseline) {
+    if (isForbiddenGrant(role, p)) continue;
     const ov = overrideMap.get(p);
     if (ov !== false) result.add(p);
   }
   for (const [perm, granted] of overrideMap) {
     if (granted && PERMISSIONS.includes(perm as Permission)) {
+      if (isForbiddenGrant(role, perm as Permission)) continue;
       result.add(perm as Permission);
     }
   }

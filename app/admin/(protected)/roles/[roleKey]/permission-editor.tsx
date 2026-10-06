@@ -9,15 +9,21 @@ type PermState = Record<string, boolean>;
 const MODULE_OPS_MAP = Object.fromEntries(
   STAFF_MODULES.map((m) => [m.key, m.ops])
 );
+const MODULE_LABELS_MAP = Object.fromEntries(
+  STAFF_MODULES.map((m) => [m.key, m.opLabels ?? {}])
+);
 
 export function PermissionEditor({
   roleKey,
   modules,
-  baseline
+  baseline,
+  locked = []
 }: {
   roleKey: string;
   modules: ModuleAccess[];
   baseline: PermState;
+  // Permissions that can never be granted to this role (shown, not togglable).
+  locked?: string[];
 }) {
   const [perms, setPerms] = useState<PermState>(baseline);
   const [isPending, startTransition] = useTransition();
@@ -27,6 +33,7 @@ export function PermissionEditor({
   const hasChanges = changedKeys.length > 0;
 
   function toggle(permKey: string) {
+    if (locked.includes(permKey)) return;
     setPerms((prev) => ({ ...prev, [permKey]: !prev[permKey] }));
     setResult(null);
   }
@@ -70,19 +77,32 @@ export function PermissionEditor({
               <div className="min-w-0">
                 <p className="text-[12.5px] font-semibold text-ink">{mod.label}</p>
                 <p className="truncate text-[10.5px] text-ink/45">{mod.description}</p>
+                {Object.keys(MODULE_LABELS_MAP[mod.key] ?? {}).length > 0 && (
+                  <p className="mt-0.5 text-[10px] text-ink/55">
+                    {modOps
+                      .map(
+                        (op) =>
+                          `${OP_SHORT[op]} = ${MODULE_LABELS_MAP[mod.key][op] ?? op}`
+                      )
+                      .join(" · ")}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-1.5">
                 {modOps.map((op) => {
                   const permKey = opsDef[op]!;
                   const granted = perms[permKey] ?? false;
                   const isChanged = permKey in baseline && perms[permKey] !== baseline[permKey];
+                  const isLocked = locked.includes(permKey);
+                  const opLabel = MODULE_LABELS_MAP[mod.key]?.[op];
                   return (
                     <button
                       key={op}
                       type="button"
                       onClick={() => toggle(permKey)}
-                      title={`${OP_SHORT[op]} — ${granted ? "autorisé" : "refusé"}${isChanged ? " (modifié)" : ""}`}
-                      className={`relative inline-flex h-7 min-w-[28px] cursor-pointer select-none items-center justify-center rounded-md px-2 text-[10px] font-bold uppercase tracking-[0.08em] transition-all active:scale-95 ${
+                      disabled={isLocked}
+                      title={`${opLabel ?? OP_SHORT[op]} — ${isLocked ? "interdit pour ce rôle (sécurité)" : granted ? "autorisé" : "refusé"}${isChanged ? " (modifié)" : ""}`}
+                      className={`relative inline-flex h-7 min-w-[28px] ${isLocked ? "cursor-not-allowed opacity-40" : "cursor-pointer"} select-none items-center justify-center rounded-md px-2 text-[10px] font-bold uppercase tracking-[0.08em] transition-all active:scale-95 ${
                         granted
                           ? "bg-lime text-ink shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] hover:bg-lime/80"
                           : "bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700"

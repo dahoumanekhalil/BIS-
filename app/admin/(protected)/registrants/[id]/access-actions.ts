@@ -2,15 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { AccessPointType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/admin/auth";
 import { audit } from "@/lib/admin/audit";
 import {
   BadgeError,
-  revokeBadgeCredential,
-  rotateBadgeCredential
+  getCurrentBadgeToken,
+  regenerateBadgeCredential,
+  revokeBadgeCredential
 } from "@/lib/badge";
+import { renderBadgeQrDataUrl } from "@/lib/badge/qr";
 import { isAccessMutationNoop } from "./access-mutation-guard";
 
 // ─── Shared shapes / validators ──────────────────────────────────────────
@@ -215,116 +216,252 @@ export async function revokeRoomAccessAction(
   revalidatePath(`/${ROOM_ACCESS_SCOPE}/${participantId}`);
 }
 
-// ─── rotateBadgeAsAdminAction ────────────────────────────────────────────
+// ─── Badge (QR) administration ───────────────────────────────────────────
 //
-// Admin-initiated rotation. Calls the Phase 2 service which does the
-// revoke-old + create-new atomically. The rawToken is generated and then
-// DISCARDED SERVER-SIDE — it is never returned to the admin, never logged,
-// never displayed. The participant will see the new QR when they next
-// call their own `generateOrRotateMyBadge` action (which will rotate
-// again — that is the expected shape of the current UX).
-export async function rotateBadgeAsAdminAction(
-  participantIdRaw: string,
-  reasonRaw: string
-) {
-  const { user } = await requirePermission("badge.manage");
+// POLICY: a participant has ONE persistent QR. Subscribers can only view it.
+// Only an administrator can replace it, and only through
+// `regenerateBadgeAsAdminAction` (permission `badge.regenerate`). Revoking
+// is durable: nothing a subscriber does re-creates a credential afterwards.
+//
+// Raw tokens are rendered straight into a QR image and are never logged,
+// audited or returned as strings.
+
+export type BadgeAdminQrResult =
+  | {
+      ok: true;
+      qrDataUrl: string;
+      credentialId: string;
+      sequence: number;
+      issuedAt: string;
+    }
+  | {
+      ok: false;
+      code:
+        | "NO_ACTIVE"
+        | "LEGACY"
+        | "EXPIRED"
+        | "CONFLICT"
+        | "REASON_REQUIRED"
+        | "UNAVAILABLE";
+      message: string;
+    };
+
+const MSG = {
+  NO_ACTIVE: "Aucun QR actif pour ce participant.",
+  LEGACY:
+    "Ce badge date de l'ancien système et ne peut pas être réaffiché. Régénérez le QR.",
+  EXPIRED: "Le badge actif a expiré. Régénérez le QR.",
+  CONFLICT:
+    "Le badge a changé entre-temps (autre administrateur ou requête dupliquée). Rien n'a été modifié : actualisez la page.",
+  REASON_REQUIRED: "Un motif de 5 à 500 caractères est obligatoire.",
+  UNAVAILABLE:
+    "Opération momentanément indisponible. Aucune modification n'a été appliquée.",
+  TOO_MANY:
+    "Limite horaire atteinte pour votre compte. Réessayez dans une heure."
+} as const;
+
+const expectedIdSchema = z.string().trim().min(10).max(64).nullable();
+
+// Per-admin hourly ceiling for QR display. Counted from the audit trail in
+// the SAME transaction that writes the new audit row, serialised per admin
+// with an advisory lock, so parallel requests cannot all slip under it.
+// (Regeneration has the same ceiling inside regenerateBadgeCredential.)
+const VIEW_PER_ADMIN_PER_HOUR = 60;
+
+// Read-only: shows the CURRENT QR without rotating anything. Showing a live
+// QR lets its viewer impersonate the participant at a scanner, so it needs
+// its own sensitive permission (badge.view), not the weaker badge.manage. Each display is audited; if the audit row cannot be written,
+// the QR is NOT returned.
+export async function viewBadgeQrAsAdminAction(
+  participantIdRaw: string
+): Promise<BadgeAdminQrResult> {
+  const { user } = await requirePermission("badge.view");
   const participantId = idSchema.parse(participantIdRaw);
-  const reason = reasonSchema.parse(reasonRaw);
   await assertParticipantTarget(participantId);
 
   try {
-    // Phase 2 service already writes a `badge.rotate` AuditLog row inside
-    // its transaction. We deliberately discard the rawToken by not
-    // destructuring it out of the result.
-    await rotateBadgeCredential(
-      participantId,
-      user.id,
-      reason ?? "admin-rotate"
-    );
-  } catch (err) {
-    if (err instanceof BadgeError) {
-      // Surface as an ordinary server-action error string. The UI
-      // renders the message; no token or internal state leaks.
-      throw new Error(`Rotation refusée : ${err.code}`);
+    // One transaction: lock admin → count → read → audit. Fail closed: no
+    // audit row → no QR; over the ceiling → no QR.
+    const outcome = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"badge-budget:" + user.id}))`;
+      const used = await tx.auditLog.count({
+        where: {
+          userId: user.id,
+          action: "badge.view.admin",
+          createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) }
+        }
+      });
+      if (used >= VIEW_PER_ADMIN_PER_HOUR) return { limited: true as const };
+      const cur = await getCurrentBadgeToken(participantId, tx);
+      if (!cur.ok) return { limited: false as const, cur };
+      await tx.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "badge.view.admin",
+          entity: "Participant",
+          entityId: participantId,
+          meta: { credentialId: cur.credentialId }
+        }
+      });
+      return { limited: false as const, cur };
+    });
+    if (outcome.limited) {
+      return { ok: false, code: "UNAVAILABLE", message: MSG.TOO_MANY };
     }
-    throw err;
+    const current = outcome.cur;
+    if (!current.ok) {
+      const code =
+        current.reason === "LEGACY"
+          ? "LEGACY"
+          : current.reason === "EXPIRED"
+            ? "EXPIRED"
+            : "NO_ACTIVE";
+      return { ok: false, code, message: MSG[code] };
+    }
+    const qrDataUrl = await renderBadgeQrDataUrl(current.rawToken);
+    return {
+      ok: true,
+      qrDataUrl,
+      credentialId: current.credentialId,
+      sequence: current.sequence,
+      issuedAt: current.issuedAt.toISOString()
+    };
+  } catch {
+    return { ok: false, code: "UNAVAILABLE", message: MSG.UNAVAILABLE };
   }
-
-  // Separate audit row so the "admin-initiated" origin is filterable.
-  // The service's audit row records the credential IDs; this one records
-  // the actor/target/reason context.
-  await audit({
-    userId: user.id,
-    action: "badge.rotate.admin",
-    entity: "Participant",
-    entityId: participantId,
-    meta: { reason: reason ?? null }
-  });
-
-  revalidatePath(`/${ROOM_ACCESS_SCOPE}/${participantId}`);
 }
 
-// ─── revokeBadgeAsAdminAction ────────────────────────────────────────────
-//
-// Kills the current ACTIVE credential. If no ACTIVE credential exists,
-// this is a NOOP (idempotent) — no error surfaced to the admin. The
-// service audit hook writes `badge.revoke`; we add `badge.revoke.admin`
-// for actor context, mirroring the rotate pattern.
+// ADMIN-ONLY replacement. Atomic: revoke current ACTIVE + create the next
+// persistent ACTIVE (same Participant) + rotate the printed text code +
+// audit row, all in one transaction (see regenerateBadgeCredential).
+// `expectedCredentialId` is the credential the admin was looking at; if it
+// is no longer current (another admin, duplicate click, retry) nothing is
+// changed and a deterministic CONFLICT result is returned.
+export async function regenerateBadgeAsAdminAction(
+  participantIdRaw: string,
+  reasonRaw: string,
+  expectedCredentialIdRaw: string | null
+): Promise<BadgeAdminQrResult> {
+  const { user } = await requirePermission("badge.regenerate");
+  const participantId = idSchema.parse(participantIdRaw);
+  const expectedCredentialId = expectedIdSchema.parse(expectedCredentialIdRaw);
+  const reason = typeof reasonRaw === "string" ? reasonRaw.trim() : "";
+  if (reason.length < 5 || reason.length > 500) {
+    return { ok: false, code: "REASON_REQUIRED", message: MSG.REASON_REQUIRED };
+  }
+  if (/^[A-Za-z0-9_-]{40,}$/.test(reason)) {
+    return { ok: false, code: "REASON_REQUIRED", message: MSG.REASON_REQUIRED };
+  }
+  await assertParticipantTarget(participantId);
+
+  let result;
+  try {
+    result = await regenerateBadgeCredential({
+      participantId,
+      adminId: user.id,
+      reason,
+      expectedCredentialId
+    });
+  } catch (err) {
+    if (err instanceof BadgeError) {
+      if (err.code === "CONFLICT") {
+        return { ok: false, code: "CONFLICT", message: MSG.CONFLICT };
+      }
+      if (err.code === "RATE_LIMITED") {
+        return { ok: false, code: "UNAVAILABLE", message: MSG.TOO_MANY };
+      }
+      if (err.code === "REASON_REQUIRED") {
+        return {
+          ok: false,
+          code: "REASON_REQUIRED",
+          message: MSG.REASON_REQUIRED
+        };
+      }
+    }
+    // Never leak internals (secret config, SQL) to the browser.
+    // eslint-disable-next-line no-console
+    console.error(
+      "[badge.regenerate] failed:",
+      err instanceof BadgeError ? err.code : "unexpected"
+    );
+    return { ok: false, code: "UNAVAILABLE", message: MSG.UNAVAILABLE };
+  }
+
+  revalidatePath(`/${ROOM_ACCESS_SCOPE}/${participantId}`);
+
+  // The credential is already committed. If rendering fails the admin can
+  // simply use "view" — the QR is deterministic.
+  try {
+    const qrDataUrl = await renderBadgeQrDataUrl(result.rawToken);
+    return {
+      ok: true,
+      qrDataUrl,
+      credentialId: result.credentialId,
+      sequence: result.sequence,
+      issuedAt: new Date().toISOString()
+    };
+  } catch {
+    return { ok: false, code: "UNAVAILABLE", message: MSG.UNAVAILABLE };
+  }
+}
+
+// Durable revoke: the current ACTIVE credential becomes REVOKED. The
+// subscriber cannot re-create one (no subscriber path writes credentials,
+// and first issuance refuses when history exists). A replacement can only be
+// created by an administrator via regenerateBadgeAsAdminAction.
+// NOTE: this revokes the QR credential only. The printed text check-in code
+// is blocked at the text validator while the latest credential is REVOKED;
+// the legacy manual ticket-code / id check-in is an independent operator
+// workflow and is NOT affected.
 export async function revokeBadgeAsAdminAction(
   participantIdRaw: string,
-  reasonRaw: string
-) {
+  reasonRaw: string,
+  expectedCredentialIdRaw: string | null
+): Promise<
+  | { ok: true }
+  | { ok: false; code: "CONFLICT" | "NO_ACTIVE" | "UNAVAILABLE"; message: string }
+> {
   const { user } = await requirePermission("badge.manage");
   const participantId = idSchema.parse(participantIdRaw);
+  const expectedCredentialId = expectedIdSchema.parse(expectedCredentialIdRaw);
   const reason = reasonSchema.parse(reasonRaw);
   await assertParticipantTarget(participantId);
 
-  // Look up the ACTIVE credential id ourselves — the Phase 2 service
-  // takes a credentialId, not a participantId, for revoke.
   const active = await prisma.badgeCredential.findFirst({
     where: { participantId, status: "ACTIVE" },
     select: { id: true }
   });
-
-  let outcome: "REVOKED" | "NOOP" = "NOOP";
-  if (active) {
-    try {
-      const r = await revokeBadgeCredential(
-        active.id,
-        user.id,
-        reason ?? "admin-revoke"
-      );
-      outcome = r.status;
-    } catch (err) {
-      if (err instanceof BadgeError) {
-        throw new Error(`Révocation refusée : ${err.code}`);
-      }
-      throw err;
-    }
+  if (!active) {
+    return { ok: false, code: "NO_ACTIVE", message: MSG.NO_ACTIVE };
+  }
+  // Compare-and-swap with what the admin saw: if another admin regenerated
+  // meanwhile, do NOT silently report success on a credential that has
+  // already been replaced.
+  if (active.id !== expectedCredentialId) {
+    return { ok: false, code: "CONFLICT", message: MSG.CONFLICT };
   }
 
-  // Audit only on a real revoke — a NOOP outcome (no ACTIVE credential
-  // existed, or Phase 2 service returned NOOP because it was already
-  // revoked) intentionally does not emit a row. This aligns with the
-  // Phase 2 `badge.revoke` audit which also skips on NOOP, so the two
-  // together produce exactly one meaningful event per real revoke.
-  if (outcome === "REVOKED") {
-    await audit({
-      userId: user.id,
-      action: "badge.revoke.admin",
-      entity: "Participant",
-      entityId: participantId,
-      meta: {
-        outcome,
-        reason: reason ?? null,
-        revokedCredentialId: active?.id ?? null
-      }
-    });
+  try {
+    // The service locks the participant and writes the audit row in the
+    // same transaction. NOOP = already revoked/replaced by someone else.
+    const r = await revokeBadgeCredential(
+      active.id,
+      user.id,
+      reason ?? "admin-revoke"
+    );
+    if (r.status === "NOOP") {
+      return { ok: false, code: "CONFLICT", message: MSG.CONFLICT };
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[badge.revoke] failed:",
+      err instanceof BadgeError ? err.code : "unexpected"
+    );
+    return { ok: false, code: "UNAVAILABLE", message: MSG.UNAVAILABLE };
   }
 
   revalidatePath(`/${ROOM_ACCESS_SCOPE}/${participantId}`);
+  return { ok: true };
 }
 
-// Type used by the associated Access-point relation on AccessPoint. Exported
-// so the panel components can consume it without re-importing from Prisma.
-export { AccessPointType };

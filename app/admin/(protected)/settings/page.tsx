@@ -19,10 +19,12 @@ import { prisma } from "@/lib/db";
 // hiding the card is UX, not the security boundary.
 export default async function AdminSettingsPage() {
   const { user } = await requireAdmin();
-  const [canManageSettings, canBackupView] = await Promise.all([
-    canWithOverrides(user.role, "settings.manage"),
-    canWithOverrides(user.role, "backup.view")
-  ]);
+  const [canManageSettings, canBackupView, canManageRoles] =
+    await Promise.all([
+      canWithOverrides(user.role, "settings.manage"),
+      canWithOverrides(user.role, "backup.view"),
+      canWithOverrides(user.role, "roles.manage")
+    ]);
   const view = canManageSettings ? await getSmtpConfigView() : null;
 
   // Backup card summary — only shown to actors with backup.view. Every
@@ -91,6 +93,24 @@ export default async function AdminSettingsPage() {
             <span className="font-semibold text-ink/70">{user.email}</span>
           </p>
         </Link>
+
+        {canManageRoles && (
+          <Link
+            href="/admin/settings/badges"
+            className="block rounded-[20px] border border-line bg-white p-6 transition-shadow hover:shadow-[0_20px_50px_-30px_rgba(15,25,60,0.25)]"
+          >
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-cobalt">
+              Badges
+            </p>
+            <h2 className="mt-3 font-display text-2xl font-black tracking-tight text-ink">
+              Régénération du QR code
+            </h2>
+            <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink/65">
+              Choisir quels rôles administrateur peuvent régénérer le QR code
+              d&apos;un participant.
+            </p>
+          </Link>
+        )}
 
         {canBackupView && backupSummary && (
           <Link

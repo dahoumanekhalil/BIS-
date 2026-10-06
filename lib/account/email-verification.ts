@@ -2,6 +2,11 @@ import "server-only";
 
 import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
+import { hashPassword } from "@/lib/admin/password";
+import {
+  ensureParticipantForAccount,
+  ensureActiveBadge
+} from "@/lib/register/participant";
 
 // Email-verification tokens for AccountUser. Mirror the AccountSession
 // design: the raw token is returned once (to be embedded in a link) and
@@ -108,7 +113,7 @@ export async function consumeEmailVerificationToken(
 
   const user = await prisma.accountUser.findUnique({
     where: { id: row.userId },
-    select: { id: true, email: true }
+    select: { id: true, email: true, firstName: true, lastName: true }
   });
   if (!user) return { ok: false, reason: "user-missing" };
   if (user.email.toLowerCase() !== row.emailAtIssue.toLowerCase()) {
@@ -152,6 +157,25 @@ export async function consumeEmailVerificationToken(
     }
   });
 
+  // ─── Automatic QR badge — ONLY now that the email is proven ────────────
+  // Bootstrap the Participant (after the legacy claim above, so a claimed
+  // anonymous registration is reused instead of conflicting) and issue the
+  // account's ONE persistent QR. First issuance only: ensureActiveBadge
+  // never replaces a credential and never undoes an admin revoke. Failure
+  // is non-fatal — /compte/badge retries first issuance on the next visit.
+  try {
+    const ensured = await ensureParticipantForAccount(user);
+    if (ensured.kind === "ready") {
+      await ensureActiveBadge(ensured.participant.id);
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[verify-email] automatic badge issuance failed (non-fatal):",
+      err instanceof Error ? err.name : "unknown"
+    );
+  }
+
   return {
     ok: true,
     userId: user.id,
@@ -169,4 +193,130 @@ export async function purgeExpiredVerificationTokens(): Promise<number> {
     where: { expiresAt: { lt: new Date() } }
   });
   return res.count;
+}
+
+/** True when the AccountUser has proven ownership of their email. */
+export async function isAccountEmailVerified(
+  accountUserId: string
+): Promise<boolean> {
+  const u = await prisma.accountUser.findUnique({
+    where: { id: accountUserId },
+    select: { emailVerifiedAt: true }
+  });
+  return Boolean(u?.emailVerifiedAt);
+}
+
+// ─── "This wasn't me" — neutralise a hijacked / unexpected signup ──────────
+//
+// Threat: someone signs up with a VICTIM's email and a password they know;
+// the verification mail reaches the victim, who clicks it. The account is now
+// verified and (via the claim flow) may hold the victim's registration and QR.
+//
+// Right after a successful verification click the landing page offers
+// "Ce n'est pas moi". Possession of the just-consumed link (carried in a
+// short-lived httpOnly cookie, never in a URL) proves mailbox ownership, so
+// it may neutralise the account:
+//   • every session is deleted,
+//   • the password is replaced by an unusable random value (recovery is the
+//     normal "forgot password" email flow — only the mailbox owner can use it),
+//   • the email is marked unverified again,
+//   • participants bound to the account are unbound (they stay as ordinary
+//     registrations with that email, claimable later by the real owner),
+//   • their ACTIVE QR credentials are REVOKED (so any QR the intruder saw is
+//     dead; an administrator must regenerate — revocation is durable),
+//   • one audit row records the incident, all in ONE transaction.
+// Window: 5 minutes after the link was consumed. Idempotent.
+
+export const UNEXPECTED_SIGNUP_WINDOW_MS = 5 * 60 * 1000;
+
+export type NeutralizeResult =
+  | { ok: true; revokedCredentials: number; unboundParticipants: number }
+  | { ok: false; reason: "invalid" | "expired" };
+
+export async function neutralizeUnexpectedSignup(
+  rawToken: string
+): Promise<NeutralizeResult> {
+  if (!rawToken || typeof rawToken !== "string" || rawToken.length > 256) {
+    return { ok: false, reason: "invalid" };
+  }
+  const tokenHash = hashToken(rawToken);
+  const now = new Date();
+
+  return prisma.$transaction(async (tx) => {
+    const row = await tx.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      select: { userId: true, usedAt: true }
+    });
+    // Only a token that WAS consumed (a verification click really happened).
+    if (!row || !row.usedAt) return { ok: false, reason: "invalid" } as const;
+    if (now.getTime() - row.usedAt.getTime() > UNEXPECTED_SIGNUP_WINDOW_MS) {
+      return { ok: false, reason: "expired" } as const;
+    }
+
+    const userId = row.userId;
+    await tx.accountSession.deleteMany({ where: { userId } });
+    const upd = await tx.accountUser.updateMany({
+      where: { id: userId },
+      data: {
+        passwordHash: hashPassword(randomBytes(32).toString("hex")),
+        emailVerifiedAt: null
+      }
+    });
+    if (upd.count !== 1) return { ok: false, reason: "invalid" } as const;
+    // Burn every outstanding verification token for this account.
+    await tx.emailVerificationToken.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: now }
+    });
+
+    const participants = await tx.participant.findMany({
+      where: { accountUserId: userId },
+      select: { id: true }
+    });
+    const ids = participants.map((p) => p.id);
+    let revoked = 0;
+    let revokedIds: string[] = [];
+    if (ids.length > 0) {
+      revokedIds = (
+        await tx.badgeCredential.findMany({
+          where: { participantId: { in: ids }, status: "ACTIVE" },
+          select: { id: true }
+        })
+      ).map((c) => c.id);
+      const r = await tx.badgeCredential.updateMany({
+        where: { participantId: { in: ids }, status: "ACTIVE" },
+        data: {
+          status: "REVOKED",
+          revokedAt: now,
+          revokedById: null,
+          revokedReason: "unexpected-signup-report"
+        }
+      });
+      revoked = r.count;
+      await tx.participant.updateMany({
+        where: { id: { in: ids } },
+        data: { accountUserId: null }
+      });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        userId: null,
+        action: "account.unexpected-signup.reported",
+        entity: "AccountUser",
+        entityId: userId,
+        meta: {
+          revokedCredentials: revoked,
+          unboundParticipants: ids.length,
+          participantIds: ids,
+          revokedCredentialIds: revokedIds
+        }
+      }
+    });
+    return {
+      ok: true,
+      revokedCredentials: revoked,
+      unboundParticipants: ids.length
+    } as const;
+  });
 }

@@ -206,7 +206,7 @@ describe("Phase 10 / 11 boundary is respected", () => {
         "verifyBadgeToken",
         "hashBadgeToken",
         "generateBadgeToken",
-        "rotateBadgeCredential",
+        "regenerateBadgeCredential",
         "revokeBadgeCredential",
         "issueBadgeCredential"
       ]) {

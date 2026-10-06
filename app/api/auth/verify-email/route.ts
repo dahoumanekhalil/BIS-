@@ -94,5 +94,15 @@ export async function GET(req: Request) {
       }
     }).catch(() => undefined);
   }
-  return safeRedirect("/auth/verifier-email", "ok");
+  // Carry the just-consumed token in a short-lived httpOnly cookie (never in
+  // the URL) so the landing page can offer "Ce n'est pas moi".
+  const res = safeRedirect("/auth/verifier-email", "ok");
+  res.cookies.set("bis_notme", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/auth/verifier-email",
+    maxAge: 5 * 60
+  });
+  return res;
 }
