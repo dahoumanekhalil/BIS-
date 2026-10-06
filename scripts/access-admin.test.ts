@@ -37,9 +37,13 @@ import {
 } from "@prisma/client";
 import { can } from "../lib/admin/rbac";
 import {
-  rotateBadgeCredential,
+  regenerateBadgeCredential,
   revokeBadgeCredential
 } from "../lib/badge";
+
+// Test-only secret (not a real credential). Read lazily by lib/badge/token.
+process.env.BADGE_QR_TOKEN_SECRET =
+  "test-only-badge-qr-secret-0123456789abcdef0123456789abcdef";
 import { hashPassword } from "../lib/admin/password";
 import { isAccessMutationNoop } from "../app/admin/(protected)/registrants/[id]/access-mutation-guard";
 
@@ -147,6 +151,23 @@ describe("RBAC — which roles can trigger admin access actions", () => {
     assert.equal(can(AdminRole.SUPER_ADMIN, "badge.manage"), true);
     assert.equal(can(AdminRole.ADMIN, "badge.manage"), true);
     assert.equal(can(AdminRole.REGISTRATION_MANAGER, "badge.manage"), true);
+  });
+
+  test("badge.regenerate: ONLY SUPER_ADMIN + ADMIN (least privilege)", () => {
+    assert.equal(can(AdminRole.SUPER_ADMIN, "badge.regenerate"), true);
+    assert.equal(can(AdminRole.ADMIN, "badge.regenerate"), true);
+    for (const r of [
+      AdminRole.REGISTRATION_MANAGER,
+      AdminRole.CHECKIN_OPERATOR,
+      AdminRole.SALES,
+      AdminRole.FINANCE,
+      AdminRole.ANALYTICS,
+      AdminRole.CONTENT_MANAGER,
+      AdminRole.SPONSOR_MANAGER,
+      AdminRole.VIEWER
+    ]) {
+      assert.equal(can(r, "badge.regenerate"), false, `${r} must not regenerate`);
+    }
   });
 
   test("CHECKIN_OPERATOR does NOT hold badge.manage (scanner-only)", () => {
@@ -291,13 +312,14 @@ describe("cross-participant isolation", () => {
 
 // ─── Admin badge rotation via Phase 2 service ─────────────────────────────
 
-describe("admin rotation via rotateBadgeCredential", () => {
+describe("admin regeneration via regenerateBadgeCredential", () => {
   test("returns rawToken but the audit row never contains it", async () => {
-    const result = await rotateBadgeCredential(
+    const result = await regenerateBadgeCredential({
       participantId,
       adminId,
-      "admin-rotate-test"
-    );
+      reason: "admin-regenerate-test",
+      expectedCredentialId: null
+    });
     assert.ok(result.rawToken);
     assert.ok(result.credentialId);
 
@@ -306,7 +328,7 @@ describe("admin rotation via rotateBadgeCredential", () => {
     // meta. This mirrors scripts/badge-credential.test.ts, added here so
     // Phase 7's admin path is separately covered.
     const log = await prisma.auditLog.findFirst({
-      where: { action: "badge.rotate", entityId: participantId },
+      where: { action: "badge.regenerate", entityId: participantId },
       orderBy: { createdAt: "desc" }
     });
     assert.ok(log);
@@ -314,7 +336,7 @@ describe("admin rotation via rotateBadgeCredential", () => {
     assert.equal(
       meta.includes(result.rawToken),
       false,
-      "rawToken leaked into badge.rotate audit meta"
+      "rawToken leaked into badge.regenerate audit meta"
     );
   });
 

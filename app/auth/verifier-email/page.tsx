@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { reportUnexpectedSignup } from "./actions";
 
 export const metadata = {
   title: "Vérification de l'email",
@@ -23,6 +25,12 @@ const MESSAGES: Record<string, { title: string; body: string; tone: "ok" | "warn
       "Ce lien n'est plus valable. Reconnectez-vous à votre compte puis demandez un nouveau lien de vérification.",
     tone: "err"
   },
+  secured: {
+    title: "Compte sécurisé.",
+    body:
+      "Nous avons déconnecté toutes les sessions, rendu le mot de passe inutilisable et retiré le badge lié à ce compte. Si l'adresse est bien la vôtre, utilisez « Mot de passe oublié » pour reprendre le contrôle du compte ; l'équipe BIS pourra vous réémettre un badge.",
+    tone: "ok"
+  },
   throttled: {
     title: "Trop de tentatives.",
     body:
@@ -39,6 +47,10 @@ export default async function VerifierEmailPage({
   const sp = await searchParams;
   const key = (sp?.status ?? "invalid").toLowerCase();
   const msg = MESSAGES[key] ?? MESSAGES.invalid;
+  // After a successful verification, offer "this wasn't me" while the
+  // short-lived cookie set by the verification endpoint is still present.
+  const jar = await cookies();
+  const canReport = key === "ok" && Boolean(jar.get("bis_notme")?.value);
 
   const cls =
     msg.tone === "ok"
@@ -54,6 +66,19 @@ export default async function VerifierEmailPage({
           {msg.title}
         </h1>
         <p className="mt-3 text-[14px] leading-relaxed text-ink/70">{msg.body}</p>
+        {canReport && (
+          <form action={reportUnexpectedSignup} className="mt-5 rounded-lg border border-line bg-white p-4">
+            <p className="text-[13px] leading-relaxed text-ink/70">
+              Vous n&apos;avez pas créé de compte avec cette adresse ?
+            </p>
+            <button
+              type="submit"
+              className="mt-3 rounded-btn border border-red-300 bg-red-50 px-4 py-2 text-[13px] font-bold text-red-800 hover:bg-red-100"
+            >
+              Ce n&apos;est pas moi — sécuriser
+            </button>
+          </form>
+        )}
         <div className="mt-6 flex gap-3">
           <Link
             href="/auth?mode=login"

@@ -235,5 +235,5 @@ export async function changePasswordAction(
   return { status: "success", message: "Mot de passe mis à jour." };
 }
 
-// Exported so the client form can type-check against the initial state.
-export { IDLE };
+// NOTE: a "use server" file may only export async functions, so the initial
+// state constant is NOT exported (the client form defines its own IDLE).

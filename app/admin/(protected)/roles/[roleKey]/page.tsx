@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/admin/auth";
+import {
+  PERMISSIONS,
+  getEffectivePermissions,
+  isForbiddenGrant
+} from "@/lib/admin/rbac";
 import { AdminHeader } from "@/components/admin/header";
 import { prisma } from "@/lib/db";
 import {
@@ -228,7 +233,18 @@ export default async function RoleDetailPage({
     countUsers(role),
     sampleUsers(role)
   ]);
-  const access = getAccessForRole(role);
+  // Override-aware: what the role REALLY holds today (saved overrides and
+  // hard exclusions included), so the editor reflects reality after a save.
+  const effective =
+    role.kind === "staff"
+      ? await getEffectivePermissions(role.adminRole)
+      : undefined;
+  const access = getAccessForRole(role, effective);
+  // Permissions that can never be granted to this role (security rule).
+  const lockedPerms =
+    role.kind === "staff"
+      ? PERMISSIONS.filter((p) => isForbiddenGrant(role.adminRole, p))
+      : [];
 
   const baselinePerms: Record<string, boolean> = {};
   if (role.kind === "staff") {
@@ -360,6 +376,7 @@ export default async function RoleDetailPage({
               roleKey={role.key}
               modules={access}
               baseline={baselinePerms}
+              locked={lockedPerms}
             />
           </section>
         )}

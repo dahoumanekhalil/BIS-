@@ -4,6 +4,8 @@ import "./globals.css";
 import { SiteFrame } from "@/components/layout/site-frame";
 import { eventInfo } from "@/lib/utils";
 import { getCurrentAccount } from "@/lib/account/auth";
+import { OfflineRuntime } from "@/components/mobile/offline-runtime";
+import { offlineAccountKey } from "@/lib/mobile/account-key";
 
 const alexandria = Alexandria({
   subsets: ["latin"],
@@ -14,6 +16,18 @@ const alexandria = Alexandria({
 
 export const metadata: Metadata = {
   metadataBase: new URL(eventInfo.siteUrl),
+  manifest: "/manifest.webmanifest",
+  applicationName: "BIS 2027",
+  appleWebApp: {
+    capable: true,
+    title: "BIS 2027",
+    statusBarStyle: "default"
+  },
+  icons: {
+    icon: [{ url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }]
+  },
+  formatDetection: { telephone: false },
   title: {
     default: `${eventInfo.name} — BIS`,
     template: `%s · BIS 2027`
@@ -95,6 +109,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <SiteFrame account={navAccount}>{children}</SiteFrame>
+        <OfflineRuntime accountKey={account ? offlineAccountKey(account.id) : null} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

@@ -69,7 +69,12 @@ export function Footer() {
       <div className="border-t border-white/10">
         <div className="container-page flex flex-col items-start justify-between gap-3 py-6 text-xs text-white/50 sm:flex-row sm:items-center">
           <p>© 2027 BIS Algeria. Tous droits réservés.</p>
-          <p>Alger · Algérie</p>
+          <p className="flex items-center gap-4">
+            <a href="/confidentialite" className="hover:text-white">
+              Confidentialité
+            </a>
+            <span>Alger · Algérie</span>
+          </p>
         </div>
       </div>
     </footer>

@@ -48,6 +48,11 @@ import { validateRoomQrCore } from "../lib/admin/room-validator";
 
 const prisma = new PrismaClient();
 
+// Test-only QR secret (not a real credential). Read lazily by lib/badge/token;
+// QR issuance fails closed without it.
+process.env.BADGE_QR_TOKEN_SECRET ??=
+  "test-only-badge-qr-secret-0123456789abcdef0123456789abcdef";
+
 let eventId: string;
 let mainPointId: string;
 let room1PointId: string;

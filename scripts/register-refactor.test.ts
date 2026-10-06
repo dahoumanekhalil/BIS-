@@ -24,6 +24,11 @@ import { ensureParticipantForAccount, ensureActiveBadge } from "../lib/register/
 
 const prisma = new PrismaClient();
 
+// Test-only QR secret (not a real credential). Read lazily by lib/badge/token;
+// QR issuance fails closed without it.
+process.env.BADGE_QR_TOKEN_SECRET ??=
+  "test-only-badge-qr-secret-0123456789abcdef0123456789abcdef";
+
 async function ensureEvent() {
   const existing = await prisma.event.findFirst({ orderBy: { startsAt: "asc" } });
   if (existing) return existing;
@@ -47,7 +52,9 @@ async function makeAccount(email: string) {
       email,
       firstName: "Test",
       lastName: "Refactor",
-      passwordHash: hashPassword("hunter2-test-password")
+      passwordHash: hashPassword("hunter2-test-password"),
+      // QR issuance requires a verified email.
+      emailVerifiedAt: new Date()
     },
     select: { id: true, email: true, firstName: true, lastName: true }
   });

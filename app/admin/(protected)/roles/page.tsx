@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/admin/auth";
+import { getEffectivePermissions, type Permission } from "@/lib/admin/rbac";
 import { AdminHeader } from "@/components/admin/header";
 import { prisma } from "@/lib/db";
 import {
@@ -142,14 +143,16 @@ function Stat({
 function RoleCardView({
   role,
   count,
-  countUnit
+  countUnit,
+  effective
 }: {
   role: RoleCardType;
   count: number;
   countUnit: string;
+  effective?: readonly Permission[];
 }) {
   const tone = TONE[role.tone];
-  const access = getAccessForRole(role);
+  const access = getAccessForRole(role, effective);
 
   // Aggregate ops across all modules — union of ops granted anywhere.
   const opsGranted = new Set<Op>();
@@ -234,7 +237,7 @@ function RoleCardView({
               </p>
               <p className="mt-0.5 font-display text-[14px] font-black leading-none text-ink tabular-nums">
                 {(() => {
-                  const access = getAccessForRole(role);
+                  const access = getAccessForRole(role, effective);
                   const modulesWithAny = access.filter((m) =>
                     OPS.some((op) => m.granted[op])
                   ).length;
@@ -249,7 +252,7 @@ function RoleCardView({
               </p>
               <p className="mt-0.5 font-display text-[14px] font-black leading-none text-ink tabular-nums">
                 {(() => {
-                  const access = getAccessForRole(role);
+                  const access = getAccessForRole(role, effective);
                   let g = 0;
                   let t = 0;
                   for (const m of access) {
@@ -269,7 +272,7 @@ function RoleCardView({
               </p>
               <p className="mt-0.5 text-[11px] font-semibold leading-none text-ink/60">
                 {(() => {
-                  const access = getAccessForRole(role);
+                  const access = getAccessForRole(role, effective);
                   let g = 0;
                   let t = 0;
                   for (const m of access) {
@@ -324,6 +327,14 @@ function RoleCardView({
 export default async function AdminRolesPage() {
   const { user } = await requirePermission("roles.manage");
   const counts = await loadCounts();
+  const effectiveByRole: Partial<Record<AdminRole, Permission[]>> = {};
+  await Promise.all(
+    ROLE_CATALOG.map(async (r) => {
+      if (r.kind === "staff") {
+        effectiveByRole[r.adminRole] = await getEffectivePermissions(r.adminRole);
+      }
+    })
+  );
 
   const staff = ROLE_CATALOG.filter((r) => r.kind === "staff");
   const attendee = ROLE_CATALOG.filter((r) => r.kind === "attendee");
@@ -386,6 +397,7 @@ export default async function AdminRolesPage() {
                 role={r}
                 count={countFor(r, counts)}
                 countUnit={countLabel(r)}
+                effective={r.kind === "staff" ? effectiveByRole[r.adminRole] : undefined}
               />
             ))}
           </div>

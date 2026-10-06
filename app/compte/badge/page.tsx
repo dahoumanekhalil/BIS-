@@ -2,24 +2,41 @@ import Link from "next/link";
 import { requireAccount } from "@/lib/account/auth";
 import { getCompteContext } from "@/lib/account/participant";
 import { CompteCard } from "@/components/compte/card";
-import { BadgeQrClient } from "@/components/compte/badge-qr-client";
+import {
+  BadgeQrClient,
+  type BadgeUnavailableReason
+} from "@/components/compte/badge-qr-client";
+import { getCurrentBadgeToken } from "@/lib/badge";
+import { renderBadgeQrDataUrl } from "@/lib/badge/qr";
+import { ensureActiveBadge } from "@/lib/register/participant";
 import { ensureCheckinCode } from "@/lib/badge/checkin-code";
+import { isAccountEmailVerified } from "@/lib/account/email-verification";
+import { OfflineSnapshotSync } from "@/components/mobile/offline-snapshot-sync";
+import { offlineAccountKey } from "@/lib/mobile/account-key";
+import { resolveBadgeRole, BADGE_ROLE_LABEL } from "@/lib/badge/role";
+import {
+  PARTICIPATION_LABEL,
+  REGISTRATION_STATUS_LABEL
+} from "@/lib/account/labels";
 import { RegistrationStatus } from "@prisma/client";
 
 export const metadata = { title: "Mon badge" };
 
-// Attendee-facing badge page. This route DOES NOT trigger any credential
-// mutation on load — pure read of participant state. The QR itself only
-// appears after an explicit user click on the client component, which POSTs
-// to the server action `generateOrRotateMyBadge()`.
+// Attendee-facing badge page — VIEW ONLY.
 //
-// Eligibility gate (mirrored server-side inside the action for defence in
-// depth):
-//   • participant must exist for this AccountUser
-//   • participant.status must not be CANCELLED
+// The participant has ONE persistent QR. This page re-derives it on the
+// server from the current credential and renders it as an image: opening,
+// refreshing, another browser or another session always shows the SAME QR.
+// There is no server action here and nothing that can rotate, replace or
+// revoke a credential. Only an administrator can regenerate (see
+// regenerateBadgeAsAdminAction).
 //
-// Payment is NOT a prerequisite for badge issuance — see
-// docs/registration-architecture.md §Badge / QR.
+// The only write on this route is FIRST issuance for a participant who has
+// never had any credential (ensureActiveBadge refuses when any history
+// exists, so it can never undo an admin revoke or replace a credential).
+//
+// Eligibility: participant must exist and must not be CANCELLED. Payment is
+// NOT a prerequisite — see docs/registration-architecture.md §Badge / QR.
 export default async function CompteBadgePage() {
   const account = await requireAccount();
   const { participant } = await getCompteContext(account);
@@ -69,19 +86,63 @@ export default async function CompteBadgePage() {
     );
   }
 
-  // Phase 19 — ensure the participant has a secure human-readable
-  // check-in code assigned. `ensureCheckinCode` is idempotent + atomic:
-  //   • returns the existing code if already assigned,
-  //   • otherwise generates a fresh cryptographically random one and
-  //     stores it via an updateMany atomic-claim (Phase 10 B3 pattern)
-  //     so two concurrent /compte/badge loads cannot overwrite each
-  //     other's code.
-  // The code lives on the participant row (public-safe surface) and
-  // is displayed on the badge front. NEVER logged, never in URLs,
-  // never in AuditLog metadata.
+  // The QR is issued automatically once the email is verified. Until then
+  // there is nothing to show (the banner above offers to re-send the link).
+  if (!(await isAccountEmailVerified(account.id))) {
+    return (
+      <div className="mx-auto max-w-2xl print-hide">
+        <CompteCard
+          eyebrow="Badge en attente"
+          title="Confirmez votre email pour recevoir votre QR"
+        >
+          <p className="text-[14px] leading-relaxed text-ink/70">
+            Votre QR code d&apos;accès sera généré automatiquement dès que
+            votre adresse email sera confirmée. Utilisez le bouton « Renvoyer
+            le lien de confirmation » en haut de la page si vous n&apos;avez
+            pas reçu l&apos;email.
+          </p>
+        </CompteCard>
+      </div>
+    );
+  }
+
+  // First issuance only (no-op when any credential history exists).
+  await ensureActiveBadge(participant.id);
+
+  let qrDataUrl: string | null = null;
+  let unavailableReason: BadgeUnavailableReason | null = null;
+  try {
+    const current = await getCurrentBadgeToken(participant.id);
+    if (current.ok) {
+      // The token exists only inside the QR image pixels sent to the
+      // browser; it is never passed as a string and never logged.
+      qrDataUrl = await renderBadgeQrDataUrl(current.rawToken);
+    } else {
+      unavailableReason = current.reason;
+    }
+  } catch (err) {
+    // Log the error CODE only — never a token, hash or secret.
+    // eslint-disable-next-line no-console
+    console.error(
+      "[compte/badge] QR unavailable:",
+      err instanceof Error ? err.name + ":" + err.message : "unknown"
+    );
+    unavailableReason = "ERROR";
+  }
+
+  // Idempotent: returns the existing code, assigns one only if missing.
   const checkinCode = await ensureCheckinCode(participant.id);
 
+  const roleLabel =
+    BADGE_ROLE_LABEL[
+      resolveBadgeRole({
+        tier: participant.tier ?? null,
+        participationChoice: participant.participationChoice
+      })
+    ];
+
   return (
+    <>
     <BadgeQrClient
       identity={{
         firstName: participant.firstName,
@@ -90,15 +151,37 @@ export default async function CompteBadgePage() {
         organization: participant.organization,
         jobTitle: participant.jobTitle,
         badgeStatus: badge?.status ?? null,
-        // Phase 18 — role variant is derived from tier + participation
-        // by lib/badge/role.ts:resolveBadgeRole. Adding `tier` here
-        // is a whitelist-safe pass-through; the value comes from
-        // getParticipantForAccount's already-authorised select.
         tier: participant.tier ?? null,
-        // Phase 19 — the code just assigned / re-fetched above.
         checkinCode
       }}
-      hasActiveCredential={badge !== null}
+      qrDataUrl={qrDataUrl}
+      unavailableReason={unavailableReason}
     />
+    {qrDataUrl && (
+      // Offline copy of THIS participant's own badge (device-local, cleared
+      // at logout / after 14 days). Only rendered with a valid, current QR.
+      <div className="mx-auto mt-6 max-w-md">
+        <OfflineSnapshotSync
+          data={{
+            firstName: participant.firstName,
+            lastName: participant.lastName,
+            organization: participant.organization,
+            jobTitle: participant.jobTitle,
+            roleLabel,
+            owner: offlineAccountKey(account.id),
+            email: participant.email,
+            phone: participant.phone,
+            country: participant.country,
+            participationLabel: participant.participationChoice
+              ? PARTICIPATION_LABEL[participant.participationChoice]
+              : null,
+            statusLabel: REGISTRATION_STATUS_LABEL[participant.status],
+            qrDataUrl,
+            checkinCode
+          }}
+        />
+      </div>
+    )}
+    </>
   );
 }

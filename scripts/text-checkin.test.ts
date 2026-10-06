@@ -595,3 +595,67 @@ describe("Phase 19 code discipline (structural)", () => {
     }
   });
 });
+
+// ─── QR policy alignment — admin-revoked badge also stops the text code ───
+
+describe("text validator — revoked badge gate (QR policy)", () => {
+  async function withCredential(
+    participantId: string,
+    status: "ACTIVE" | "REVOKED"
+  ) {
+    await prisma.badgeCredential.create({
+      data: {
+        participantId,
+        tokenHash: randomBytes(32).toString("hex"),
+        status,
+        // `sequence` stays NULL: this fixture is a legacy-style row; the
+        // gate only looks at the latest credential's status.
+        issuedAt: new Date(Date.now() - 60_000)
+      }
+    });
+  }
+
+  test("latest credential REVOKED → text code is refused (generic response, no CheckIn)", async () => {
+    const p = await makeParticipant({ checkinCode: generateCheckinCode() });
+    await withCredential(p.id, "REVOKED");
+    const r = await validateMainEntranceTextCore({
+      user: { id: operatorId },
+      slug: "main",
+      code: p.checkinCode!,
+      ip: null
+    });
+    assert.equal(r.outcome, "BADGE_INVALID");
+    assert.equal(r.participant, undefined, "no identity leaked");
+    assert.equal(await prisma.checkIn.count({ where: { participantId: p.id } }), 0);
+    assert.equal(
+      (await prisma.participant.findUniqueOrThrow({ where: { id: p.id } })).checkedInAt,
+      null
+    );
+    await cleanup(p.id);
+  });
+
+  test("latest credential ACTIVE → text code still works", async () => {
+    const p = await makeParticipant({ checkinCode: generateCheckinCode() });
+    await withCredential(p.id, "ACTIVE");
+    const r = await validateMainEntranceTextCore({
+      user: { id: operatorId },
+      slug: "main",
+      code: p.checkinCode!,
+      ip: null
+    });
+    assert.equal(r.outcome, "VALID");
+    await cleanup(p.id);
+  });
+
+  test("no credential history → unchanged behaviour (text code works)", async () => {
+    const p = await makeParticipant({ checkinCode: generateCheckinCode() });
+    const r = await validateMainEntranceTextCore({
+      user: { id: operatorId },
+      slug: "main",
+      code: p.checkinCode!,
+      ip: null
+    });
+    assert.equal(r.outcome, "VALID");
+    await cleanup(p.id);
+  });
+});

@@ -569,10 +569,15 @@ model AccessPointTeamMember {
 // server-side — only its sha256 hash is persisted. Rotation preserves
 // history: revoke the old row, insert a new ACTIVE row with rotatedFromId
 // pointing at the previous one. A partial unique index on
-// (participantId) WHERE status = 'ACTIVE' is created out-of-band via
-// scripts/apply-badge-index.ts because Prisma's DSL does not support
-// partial unique constraints. The service layer must also enforce
-// single-active inside a transaction.
+// (participantId) WHERE status = 'ACTIVE' guarantees ONE active QR per
+// participant. Prisma's DSL cannot express it and `db push` does not manage
+// it: it lives in prisma/sql/2026-badge-persistent-qr.sql, which MUST be
+// applied on every environment after `db push` (verify with
+// `npm run test:badge-schema`). The service layer also enforces
+// single-active under a participant row lock.
+//
+// The QR token is HMAC-derived (see `sequence` below) so the current QR can
+// be re-displayed; the raw token is still never stored — only its sha256.
 model BadgeCredential {
   id            String      @id @default(cuid())
   participantId String
@@ -585,6 +590,17 @@ model BadgeCredential {
   revokedById   String?
   rotatedFromId String?
 
+  // Persistent-QR scheme. `sequence` is the per-participant version of the
+  // credential (1, 2, 3 …). The QR token is derived server-side as
+  // HMAC(BADGE_QR_TOKEN_SECRET, credential id + sequence), so the current QR
+  // can be re-displayed without storing the raw token. NULL = legacy
+  // hash-only credential issued before the persistent scheme: its raw token
+  // is unrecoverable and it can only be replaced (never re-displayed).
+  sequence    Int?
+  // Admin who created this credential through an administrative
+  // regeneration. NULL for system issuance (registration / cutover).
+  createdById String?
+
   participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   // Self-relation chain: previous credential this one replaced, and any
@@ -594,6 +610,9 @@ model BadgeCredential {
 
   checkIns CheckIn[]
 
+  // Backstop: a participant can never hold two credentials with the same
+  // sequence (NULLs are distinct in Postgres, so legacy rows are unaffected).
+  @@unique([participantId, sequence])
   @@index([participantId])
   @@index([participantId, status])
   @@index([status])

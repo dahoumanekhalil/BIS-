@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/admin/auth";
-import { can } from "@/lib/admin/rbac";
+import { can, canWithOverrides } from "@/lib/admin/rbac";
 import {
   getRegistrant,
   getRegistrantAccessContext,
@@ -34,12 +34,21 @@ export default async function RegistrantDetail({
   // read gate for the matrix; `access.manage` gates the per-row Grant/Revoke
   // buttons. `badge.manage` gates the Rotate/Revoke actions on the badge
   // panel. Server actions re-check the permission — this is UX gating only.
-  const mayViewAccess = can(user.role, "access.view");
-  const mayManageAccess = can(user.role, "access.manage");
-  const mayManageBadge = can(user.role, "badge.manage");
+  const mayViewAccess = await canWithOverrides(user.role, "access.view");
+  const mayManageAccess = await canWithOverrides(user.role, "access.manage");
+  const mayManageBadge = await canWithOverrides(user.role, "badge.manage");
+  // badge.regenerate is the ONLY way to replace a QR; honours DB overrides
+  // exactly like the server action does. UX gating only.
+  const mayRegenerateBadge = await canWithOverrides(
+    user.role,
+    "badge.regenerate"
+  );
   const mayCancelRoomRegistration = can(user.role, "access.manage");
+  const mayViewBadgeQr = await canWithOverrides(user.role, "badge.view");
+  const mayShowBadge =
+    mayViewAccess || mayManageBadge || mayRegenerateBadge || mayViewBadgeQr;
   const [accessCtx, roomRegistrations] = await Promise.all([
-    mayViewAccess ? getRegistrantAccessContext(id) : Promise.resolve(null),
+    mayShowBadge ? getRegistrantAccessContext(id) : Promise.resolve(null),
     mayViewAccess
       ? getRegistrantRoomRegistrations(id)
       : Promise.resolve([])
@@ -318,19 +327,23 @@ export default async function RegistrantDetail({
         {/* Phase 7 — Badge + Access Matrix (visible only to holders of
             access.view / badge.manage; each server action re-checks the
             required permission independently). */}
-        {mayViewAccess && accessCtx && (
+        {mayShowBadge && accessCtx && (
           <div className="grid gap-6 lg:grid-cols-2">
             <BadgePanel
               participantId={id}
               activeCredential={accessCtx.activeCredential}
               canManage={mayManageBadge}
+              canRegenerate={mayRegenerateBadge}
+              canView={mayViewBadgeQr}
             />
-            <AccessMatrix
-              participantId={id}
-              accessPoints={accessCtx.accessPoints}
-              permissions={accessCtx.permissions}
-              canManage={mayManageAccess}
-            />
+            {mayViewAccess && (
+              <AccessMatrix
+                participantId={id}
+                accessPoints={accessCtx.accessPoints}
+                permissions={accessCtx.permissions}
+                canManage={mayManageAccess}
+              />
+            )}
           </div>
         )}
 
