@@ -64,7 +64,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em]",
+        "inline-flex items-center rounded-full px-2 py-[3px] text-[11px] font-bold uppercase tracking-[0.08em]",
         style
       )}
     >
@@ -76,7 +76,7 @@ export function StatusBadge({
 export function TierBadge({ tier }: { tier: string | null | undefined }) {
   if (!tier)
     return (
-      <span className="inline-flex items-center rounded-full border border-white/60 bg-white px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink/60 shadow-[0_1px_0_rgba(15,25,60,0.04)]">
+      <span className="inline-flex items-center rounded-full border border-white/60 bg-white px-2 py-[3px] text-[11px] font-bold uppercase tracking-[0.08em] text-ink/60 shadow-[0_1px_0_rgba(15,25,60,0.04)]">
         —
       </span>
     );
@@ -91,7 +91,7 @@ export function TierBadge({ tier }: { tier: string | null | undefined }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em]",
+        "inline-flex items-center rounded-full px-2 py-[3px] text-[11px] font-bold uppercase tracking-[0.08em]",
         style
       )}
     >

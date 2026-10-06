@@ -4,6 +4,14 @@ import { requirePermission } from "@/lib/admin/auth";
 import { AdminHeader } from "@/components/admin/header";
 import { EmptyState } from "@/components/admin/ui";
 import {
+  PageBody,
+  PageIntro,
+  FilterTab,
+  Avatar,
+  Chip,
+  PaginationNav
+} from "@/components/admin/page-kit";
+import {
   APPLICATION_TYPES,
   APPLICATION_TYPE_LABEL,
   APPLICATION_STATUSES,
@@ -11,13 +19,25 @@ import {
   type ApplicationTypeKey,
   type ApplicationStatusKey
 } from "@/lib/applications";
-import { ApplicationsFilterBar } from "./filter-bar";
+import { cn } from "@/lib/utils";
+import { ApplicationsSearch } from "./filter-bar";
 import { StatusPill } from "./status-pill";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
+
+const STATUS_STYLE: Record<
+  ApplicationStatusKey,
+  { dot: string; ring: string }
+> = {
+  RECEIVED: { dot: "bg-cobalt", ring: "ring-cobalt/40" },
+  UNDER_REVIEW: { dot: "bg-amber-500", ring: "ring-amber-400/60" },
+  CONTACTED: { dot: "bg-navy", ring: "ring-navy/40" },
+  APPROVED: { dot: "bg-lime-600", ring: "ring-lime-600/50" },
+  REJECTED: { dot: "bg-red-500", ring: "ring-red-400/60" }
+};
 
 export default async function ApplicationsPage({
   searchParams
@@ -41,12 +61,17 @@ export default async function ApplicationsPage({
     (APPLICATION_STATUSES as readonly string[]).includes(sp.status)
       ? (sp.status as ApplicationStatusKey)
       : null;
-  const q = sp.q?.trim() || null;
-  const page = sp.page ? Math.max(1, Number(sp.page)) : 1;
+  const q = sp.q?.trim().slice(0, 200) || null;
+  const pageNumber = Number(sp.page);
+  const page =
+    Number.isFinite(pageNumber) && pageNumber >= 1
+      ? Math.min(Math.floor(pageNumber), 100_000)
+      : 1;
 
-  const where: Prisma.ApplicationWhereInput = {
+  // Search + role narrow BOTH the list and the status counters; the status
+  // filter only narrows the list.
+  const baseWhere: Prisma.ApplicationWhereInput = {
     ...(type ? { type } : {}),
-    ...(status ? { status } : {}),
     ...(q
       ? {
           OR: [
@@ -58,8 +83,12 @@ export default async function ApplicationsPage({
         }
       : {})
   };
+  const where: Prisma.ApplicationWhereInput = {
+    ...baseWhere,
+    ...(status ? { status } : {})
+  };
 
-  const [items, total] = await Promise.all([
+  const [items, total, statusRows] = await Promise.all([
     prisma.application.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -76,125 +105,180 @@ export default async function ApplicationsPage({
         createdAt: true
       }
     }),
-    prisma.application.count({ where })
+    prisma.application.count({ where }),
+    prisma.application.groupBy({
+      by: ["status"],
+      where: baseWhere,
+      _count: { _all: true }
+    })
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const counts = new Map(statusRows.map((r) => [r.status, r._count._all]));
+  const allCount = Array.from(counts.values()).reduce((a, b) => a + b, 0);
+
+  const href = (patch: {
+    type?: string | null;
+    status?: string | null;
+    page?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    const t = patch.type === undefined ? type : patch.type;
+    const s = patch.status === undefined ? status : patch.status;
+    if (t) qs.set("type", t);
+    if (s) qs.set("status", s);
+    if (q) qs.set("q", q);
+    if (patch.page && patch.page > 1) qs.set("page", String(patch.page));
+    const str = qs.toString();
+    return `/admin/applications${str ? `?${str}` : ""}`;
+  };
 
   return (
     <>
-      <AdminHeader
-        user={user}
-        title="Applications"
-        subtitle="Be a part · Sponsor · Partenaire · Intervenant · Créateur"
-      />
+      <AdminHeader user={user} title="Candidatures" subtitle="Partenariats" />
 
-      <div className="space-y-5 p-6">
-        <ApplicationsFilterBar total={total} />
+      <PageBody>
+        <PageIntro
+          title="Candidatures reçues"
+          description="Demandes des sponsors, partenaires, intervenants et créateurs de contenu. Choisissez un statut pour voir uniquement les dossiers à traiter."
+        />
 
-        <div className="overflow-visible rounded-card border border-line bg-white">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left text-[13px]">
-              <thead className="bg-frost text-[10.5px] font-bold uppercase tracking-[0.18em] text-ink/50">
-                <tr>
-                  <th className="px-4 py-3">Nom</th>
-                  <th className="px-4 py-3">Rôle</th>
-                  <th className="px-4 py-3">Organisation</th>
-                  <th className="px-4 py-3">Reçue</th>
-                  <th className="px-4 py-3">Statut</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-16">
-                      <EmptyState
-                        title="Aucune candidature ne correspond."
-                        hint="Modifiez les filtres ou attendez de nouvelles soumissions."
-                      />
-                    </td>
-                  </tr>
+        {/* Status summary — each card filters the list */}
+        <section
+          aria-label="Candidatures par statut"
+          className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6"
+        >
+          <Link
+            href={href({ status: null })}
+            scroll={false}
+            aria-current={!status ? "page" : undefined}
+            className={cn(
+              "rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(15,25,60,0.05)] transition-shadow hover:shadow-[0_12px_28px_-18px_rgba(15,25,60,0.3)]",
+              !status ? "border-ink ring-2 ring-ink/10" : "border-line"
+            )}
+          >
+            <p className="text-[13.5px] font-semibold text-ink/70">Toutes</p>
+            <p className="mt-1 font-display text-[28px] font-black leading-none tabular-nums text-ink">
+              {allCount.toLocaleString("fr-FR")}
+            </p>
+          </Link>
+          {APPLICATION_STATUSES.map((s) => {
+            const active = status === s;
+            return (
+              <Link
+                key={s}
+                href={href({ status: s })}
+                scroll={false}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(15,25,60,0.05)] transition-shadow hover:shadow-[0_12px_28px_-18px_rgba(15,25,60,0.3)]",
+                  active
+                    ? cn("border-transparent ring-2", STATUS_STYLE[s].ring)
+                    : "border-line"
                 )}
-                {items.map((a) => (
-                  <tr key={a.id} className="align-middle">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-ink">
-                        {a.firstName} {a.lastName}
-                      </div>
-                      <div className="text-[11.5px] text-ink/50">{a.email}</div>
-                    </td>
-                    <td className="px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.14em] text-ink/70">
-                      {APPLICATION_TYPE_LABEL[a.type as ApplicationTypeKey]}
-                    </td>
-                    <td className="px-4 py-3 text-ink/80">
-                      {a.organization ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-ink/60 tabular-nums">
-                      {a.createdAt.toLocaleDateString("fr-FR", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric"
-                      })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusPill status={a.status as ApplicationStatusKey} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/admin/applications/${a.id}`}
-                        className="inline-flex items-center gap-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-cobalt hover:text-cobalt-700"
-                      >
-                        Ouvrir <span aria-hidden>→</span>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              >
+                <p className="flex items-center gap-2 text-[13.5px] font-semibold text-ink/70">
+                  <span
+                    aria-hidden
+                    className={cn("h-2 w-2 rounded-full", STATUS_STYLE[s].dot)}
+                  />
+                  {APPLICATION_STATUS_LABEL[s]}
+                </p>
+                <p className="mt-1 font-display text-[28px] font-black leading-none tabular-nums text-ink">
+                  {(counts.get(s) ?? 0).toLocaleString("fr-FR")}
+                </p>
+              </Link>
+            );
+          })}
+        </section>
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <nav aria-label="Filtrer par rôle" className="flex flex-wrap gap-2.5">
+            <FilterTab
+              href={href({ type: null })}
+              active={!type}
+              label="Tous les rôles"
+            />
+            {APPLICATION_TYPES.map((t) => (
+              <FilterTab
+                key={t}
+                href={href({ type: t })}
+                active={type === t}
+                label={APPLICATION_TYPE_LABEL[t]}
+              />
+            ))}
+          </nav>
+          <ApplicationsSearch total={total} />
         </div>
 
-        {totalPages > 1 && (
-          <nav
-            aria-label="Pagination"
-            className="flex items-center justify-between text-[12px] text-ink/60"
-          >
-            <span>
-              {(page - 1) * PAGE_SIZE + 1}–
-              {Math.min(page * PAGE_SIZE, total)} sur {total}
-            </span>
-            <div className="flex gap-2">
-              {Array.from({ length: totalPages }).map((_, i) => {
-                const n = i + 1;
-                const qs = new URLSearchParams();
-                if (type) qs.set("type", type);
-                if (status) qs.set("status", status);
-                if (q) qs.set("q", q);
-                qs.set("page", String(n));
-                return (
-                  <Link
-                    key={n}
-                    href={`/admin/applications?${qs.toString()}`}
-                    className={
-                      n === page
-                        ? "rounded-md bg-ink px-2.5 py-1 text-white"
-                        : "rounded-md border border-line px-2.5 py-1 hover:border-ink/30"
-                    }
-                  >
-                    {n}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
+        {/* List */}
+        {items.length === 0 ? (
+          <EmptyState
+            title="Aucune candidature ne correspond."
+            hint="Changez de statut ou de rôle, ou effacez la recherche."
+          />
+        ) : (
+          <ul className="space-y-3">
+            {items.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/admin/applications/${a.id}`}
+                  className="group grid items-center gap-4 rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(15,25,60,0.05)] transition-shadow hover:shadow-[0_14px_34px_-22px_rgba(15,25,60,0.3)] md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_auto_auto]"
+                >
+                  <div className="flex min-w-0 items-center gap-4">
+                    <Avatar name={`${a.firstName} ${a.lastName}`} />
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] font-semibold text-ink">
+                        {a.firstName} {a.lastName}
+                      </p>
+                      <p className="truncate text-[13px] text-ink/60">
+                        {a.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-medium text-ink/85">
+                      {a.organization ?? "Sans organisation"}
+                    </p>
+                    <p className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-ink/55">
+                      <Chip tone="neutral">
+                        {APPLICATION_TYPE_LABEL[a.type as ApplicationTypeKey]}
+                      </Chip>
+                      <span className="tabular-nums">
+                        {a.createdAt.toLocaleDateString("fr-FR", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric"
+                        })}
+                      </span>
+                    </p>
+                  </div>
+
+                  <StatusPill status={a.status as ApplicationStatusKey} />
+
+                  <span className="hidden items-center gap-1 text-[13.5px] font-semibold text-cobalt group-hover:underline md:inline-flex">
+                    Ouvrir <span aria-hidden>→</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
 
-        <p className="text-[11px] text-ink/40">
+        <PaginationNav
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          hrefFor={(n) => href({ page: n })}
+        />
+
+        <p className="text-[13px] text-ink/50">
           Les statuts de candidature ({APPLICATION_STATUS_LABEL.RECEIVED},{" "}
           {APPLICATION_STATUS_LABEL.UNDER_REVIEW}, …) sont indépendants du
-          statut d'inscription des participants.
+          statut d&apos;inscription des participants.
         </p>
-      </div>
+      </PageBody>
     </>
   );
 }

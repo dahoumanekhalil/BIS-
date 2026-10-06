@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { StatusBadge, TierBadge } from "@/components/admin/ui";
+import { Avatar } from "@/components/admin/page-kit";
 import { cn } from "@/lib/utils";
 
 const HOVER_DELAY_MS = 1000;
@@ -64,18 +65,19 @@ export function RegistrantRow({ r }: { r: RegistrantRowData }) {
       onMouseLeave={cancelAndClose}
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
-      className="relative hover:bg-frost"
+      className="relative transition-colors hover:bg-frost"
     >
-      <td className="relative px-4 py-3">
-        <div className="flex items-center gap-2">
+      <td className="relative px-5 py-4">
+        <div className="flex items-center gap-3">
+          <Avatar name={`${r.firstName} ${r.lastName}`} />
           <div className="min-w-0">
             <Link
               href={`/admin/registrants/${r.id}`}
-              className="font-semibold text-ink hover:underline"
+              className="block text-[14.5px] font-semibold text-ink hover:underline"
             >
               {r.firstName} {r.lastName}
             </Link>
-            <p className="mt-0.5 truncate text-[11.5px] text-ink/55">
+            <p className="mt-0.5 truncate text-[13px] text-ink/60">
               {r.email}
             </p>
           </div>
@@ -84,29 +86,33 @@ export function RegistrantRow({ r }: { r: RegistrantRowData }) {
         {/* Hover card */}
         <HoverCard open={open} r={r} />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-5 py-4">
         <TierBadge tier={r.tier} />
       </td>
-      <td className="px-4 py-3 text-ink/70">{r.gate ?? "—"}</td>
-      <td className="px-4 py-3 text-[12px] text-ink/60">{dt(r.createdAt)}</td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
+      <td className="px-5 py-4 text-ink/75">
+        {r.gate ? r.gate.replace("Gate", "Porte") : "—"}
+      </td>
+      <td className="whitespace-nowrap px-5 py-4 text-[13.5px] text-ink/70">
+        {dt(r.createdAt)}
+      </td>
+      <td className="px-5 py-4">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={r.status} />
           {r.checkedInAt && (
-            <span className="rounded-full bg-lime/25 px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink">
-              In
+            <span className="rounded-full bg-lime/25 px-2.5 py-[3px] text-[11px] font-bold text-ink">
+              Arrivé
             </span>
           )}
         </div>
       </td>
-      <td className="px-4 py-3 text-right">
-        <div className="inline-flex items-center gap-2">
+      <td className="px-5 py-4 text-right">
+        <div className="inline-flex items-center gap-3">
           {r.phone && (
             <a
               href={`tel:${r.phone.replace(/\s+/g, "")}`}
               title={`Appeler ${r.firstName} · ${r.phone}`}
               aria-label={`Appeler ${r.firstName} ${r.lastName}`}
-              className="group/call inline-flex items-center gap-1.5 rounded-btn border border-lime bg-lime/25 px-2.5 py-1 text-[11.5px] font-bold text-ink transition-all hover:bg-lime hover:shadow-[0_10px_24px_-14px_rgba(184,230,46,0.9)]"
+              className="inline-flex items-center gap-1.5 rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] font-semibold text-ink transition-colors hover:border-lime hover:bg-lime/25"
             >
               <PhoneIcon />
               Appeler
@@ -114,9 +120,9 @@ export function RegistrantRow({ r }: { r: RegistrantRowData }) {
           )}
           <Link
             href={`/admin/registrants/${r.id}`}
-            className="text-[12px] font-semibold text-cobalt hover:underline"
+            className="rounded-btn bg-ink px-3.5 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-ink/85"
           >
-            Détail →
+            Détail
           </Link>
         </div>
       </td>

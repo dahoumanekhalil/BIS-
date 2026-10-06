@@ -20,6 +20,7 @@
     "test:account-deletion": "node --conditions=react-server --import tsx --test scripts/account-deletion.test.ts",
     "test:rbac": "node --conditions=react-server --import tsx --test scripts/rbac.test.ts",
     "test:registrants-csv": "node --conditions=react-server --import tsx --test scripts/registrants-csv.test.ts",
+    "test:session-input": "node --conditions=react-server --import tsx --test scripts/session-input.test.ts",
     "test:access": "node --conditions=react-server --import tsx --test scripts/access-semantics.test.ts",
     "test:qr": "node --conditions=react-server --import tsx --test scripts/qr.test.ts",
     "test:history": "node --conditions=react-server --import tsx --test scripts/access-history.test.ts",

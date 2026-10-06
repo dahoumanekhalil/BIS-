@@ -128,6 +128,19 @@ function buildRegistrantsWhere(filters: RegistrantFilters) {
   return where;
 }
 
+/**
+ * Registrant counts per status under the current search/tier/gate filters
+ * (the status filter itself is ignored) — feeds the status tabs.
+ */
+export async function countRegistrantsByStatus(filters: RegistrantFilters) {
+  const rows = await prisma.participant.groupBy({
+    by: ["status"],
+    where: buildRegistrantsWhere({ ...filters, status: "ALL" }),
+    _count: { _all: true }
+  });
+  return new Map(rows.map((r) => [r.status, r._count._all]));
+}
+
 export const MAX_REGISTRANT_EXPORT_ROWS = 50_000;
 
 /**

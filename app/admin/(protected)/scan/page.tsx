@@ -4,6 +4,7 @@ import { can } from "@/lib/admin/rbac";
 import { getAccessPointsWithUsage } from "@/lib/admin/queries";
 import { AdminHeader } from "@/components/admin/header";
 import { EmptyState } from "@/components/admin/ui";
+import { PageBody, Chip } from "@/components/admin/page-kit";
 import { cn } from "@/lib/utils";
 import type { AccessPointType } from "@prisma/client";
 
@@ -38,51 +39,60 @@ export default async function ScanHubPage() {
 
   const mains = points.filter((p) => p.type === "MAIN_ENTRANCE");
   const rooms = points.filter((p) => p.type === "ROOM");
+  const activeCount = points.filter((p) => p.active).length;
+  const totalScans = points.reduce((sum, p) => sum + p.checkInCount, 0);
 
   return (
     <>
       <AdminHeader
         user={user}
         title="Centre de scan"
-        subtitle="Scannez les badges des participants depuis chaque point d'accès."
+        subtitle="Points d'accès"
       />
 
-      <div className="space-y-8 p-6">
-        <section className="grid gap-3 rounded-card border border-line bg-white p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="min-w-0">
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-ink/50">
-              Vue d&apos;ensemble
-            </p>
-            <p className="mt-2 text-[13px] leading-relaxed text-ink/65">
-              Ouvrez le scanner sur le point d&apos;accès que vous couvrez.
-              Chaque scan est validé côté serveur avec la règle
-              correspondant au type de point (entrée principale ou salle).
-              Consultez l&apos;historique global pour retrouver un passage.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 sm:justify-end">
-            <Link
-              href="/admin/scan/history"
-              className="inline-flex items-center gap-2 rounded-btn border border-line bg-white px-4 py-2 text-[12px] font-bold text-ink transition-colors hover:border-cobalt hover:text-cobalt"
-            >
-              Historique des scans →
-            </Link>
-            {can(user.role, "analytics.view") && (
-              <Link
-                href="/admin/scan/analytics"
-                className="inline-flex items-center gap-2 rounded-btn border border-line bg-white px-4 py-2 text-[12px] font-bold text-ink transition-colors hover:border-cobalt hover:text-cobalt"
-              >
-                Analytics check-in →
-              </Link>
-            )}
-            {can(user.role, "access.view") && (
-              <Link
-                href="/admin/access-points"
-                className="inline-flex items-center gap-2 rounded-btn border border-line bg-white px-4 py-2 text-[12px] font-bold text-ink transition-colors hover:border-cobalt hover:text-cobalt"
-              >
-                Configurer les points →
-              </Link>
-            )}
+      <PageBody>
+        {/* Overview */}
+        <section className="relative overflow-hidden rounded-[24px] bg-navy p-7 text-white sm:p-8">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-lime/10 blur-[90px]"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-cobalt/25 blur-[100px]"
+          />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="font-display text-[26px] font-black leading-tight tracking-tight">
+                Choisissez un point d&apos;accès à scanner
+              </h2>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-white/65">
+                Ouvrez le scanner sur le point que vous couvrez. Chaque scan
+                est vérifié côté serveur selon le type de point (entrée
+                principale ou salle).
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2.5">
+                <HeroLink href="/admin/scan/history">
+                  Historique des scans
+                </HeroLink>
+                {can(user.role, "analytics.view") && (
+                  <HeroLink href="/admin/scan/analytics">
+                    Statistiques
+                  </HeroLink>
+                )}
+                {can(user.role, "access.view") && (
+                  <HeroLink href="/admin/access-points">
+                    Configurer les points
+                  </HeroLink>
+                )}
+              </div>
+            </div>
+
+            <dl className="grid shrink-0 grid-cols-3 gap-3">
+              <HeroStat label="Points" value={points.length} />
+              <HeroStat label="Actifs" value={activeCount} />
+              <HeroStat label="Scans" value={totalScans} />
+            </dl>
           </div>
         </section>
 
@@ -94,7 +104,7 @@ export default async function ScanHubPage() {
         ) : (
           <>
             {mains.length > 0 && (
-              <Group title="Entrée principale">
+              <Group title="Entrée principale" count={mains.length}>
                 {mains.map((p) => (
                   <PointCard
                     key={p.id}
@@ -102,6 +112,8 @@ export default async function ScanHubPage() {
                     name={p.name}
                     type={p.type}
                     active={p.active}
+                    scans={p.checkInCount}
+                    authorized={p.permissionCount}
                     canOperate={canValidateMain}
                   />
                 ))}
@@ -109,7 +121,7 @@ export default async function ScanHubPage() {
             )}
 
             {rooms.length > 0 && (
-              <Group title="Salles">
+              <Group title="Salles" count={rooms.length}>
                 {rooms.map((p) => (
                   <PointCard
                     key={p.id}
@@ -117,6 +129,8 @@ export default async function ScanHubPage() {
                     name={p.name}
                     type={p.type}
                     active={p.active}
+                    scans={p.checkInCount}
+                    authorized={p.permissionCount}
                     canOperate={canValidateRoom}
                   />
                 ))}
@@ -124,26 +138,59 @@ export default async function ScanHubPage() {
             )}
           </>
         )}
-      </div>
+      </PageBody>
     </>
+  );
+}
+
+function HeroLink({
+  href,
+  children
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center rounded-btn border border-white/20 bg-white/10 px-4 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-white/20"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function HeroStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-[88px] rounded-card border border-white/10 bg-white/[0.06] px-4 py-3 text-center backdrop-blur-sm">
+      <dd className="font-display text-[28px] font-black leading-none tabular-nums">
+        {value.toLocaleString("fr-FR")}
+      </dd>
+      <dt className="mt-1.5 text-[12.5px] font-medium text-white/55">
+        {label}
+      </dt>
+    </div>
   );
 }
 
 function Group({
   title,
+  count,
   children
 }: {
   title: string;
+  count: number;
   children: React.ReactNode;
 }) {
   return (
     <section>
-      <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-ink/50">
-        {title}
-      </p>
-      <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {children}
-      </ul>
+      <div className="mb-4 flex items-baseline gap-3">
+        <h2 className="font-display text-[19px] font-bold tracking-tight text-ink">
+          {title}
+        </h2>
+        <span className="text-[14px] font-semibold text-ink/50">{count}</span>
+      </div>
+      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{children}</ul>
     </section>
   );
 }
@@ -153,79 +200,137 @@ function PointCard({
   name,
   type,
   active,
+  scans,
+  authorized,
   canOperate
 }: {
   slug: string;
   name: string;
   type: AccessPointType;
   active: boolean;
+  scans: number;
+  authorized: number;
   canOperate: boolean;
 }) {
-  const typeLabel = type === "MAIN_ENTRANCE" ? "Entrée principale" : "Salle";
+  const isMain = type === "MAIN_ENTRANCE";
   const inactive = !active;
   const disabled = inactive || !canOperate;
 
   return (
     <li
       className={cn(
-        "flex flex-col justify-between gap-3 rounded-card border bg-white p-5 transition-shadow",
+        "flex flex-col gap-5 rounded-2xl border bg-white p-6 shadow-[0_1px_2px_rgba(15,25,60,0.05)] transition-shadow",
         inactive
-          ? "border-ink/15 opacity-70"
-          : canOperate
-            ? "border-line hover:shadow-[0_20px_50px_-30px_rgba(15,25,60,0.25)]"
-            : "border-line"
+          ? "border-ink/15 bg-white/70"
+          : "border-line hover:shadow-[0_16px_40px_-22px_rgba(15,25,60,0.3)]"
       )}
     >
-      <div>
-        <p className="font-display text-[17px] font-black tracking-tight text-ink">
-          {name}
-        </p>
-        <p className="mt-1 flex flex-wrap items-center gap-1.5">
-          <span
-            className={cn(
-              "rounded-full px-2 py-[2px] text-[9.5px] font-bold uppercase tracking-[0.16em]",
-              type === "MAIN_ENTRANCE"
-                ? "bg-cobalt/15 text-cobalt"
+      <div className="flex items-start gap-4">
+        <span
+          aria-hidden
+          className={cn(
+            "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl",
+            inactive
+              ? "bg-ink/[0.07] text-ink/40"
+              : isMain
+                ? "bg-cobalt/10 text-cobalt"
                 : "bg-lime/25 text-ink"
-            )}
-          >
-            {typeLabel}
-          </span>
-          <span
-            className={cn(
-              "rounded-full px-2 py-[2px] text-[9.5px] font-bold uppercase tracking-[0.16em]",
-              active ? "bg-lime/25 text-ink" : "bg-ink/10 text-ink/60"
-            )}
-          >
-            {active ? "Actif" : "Désactivé"}
-          </span>
-        </p>
-        <p className="mt-2 font-mono text-[10.5px] text-ink/55">/{slug}</p>
+          )}
+        >
+          {isMain ? <GateIcon /> : <RoomIcon />}
+        </span>
+        <div className="min-w-0">
+          <h3 className="font-display text-[18px] font-black leading-tight tracking-tight text-ink">
+            {name}
+          </h3>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Chip tone={isMain ? "info" : "ok"}>
+              {isMain ? "Entrée principale" : "Salle"}
+            </Chip>
+            <Chip tone={active ? "ok" : "neutral"}>
+              {active ? "Actif" : "Désactivé"}
+            </Chip>
+          </div>
+        </div>
       </div>
 
+      <dl className="grid grid-cols-2 gap-3 rounded-card bg-frost px-4 py-3">
+        <div>
+          <dd className="text-[20px] font-bold tabular-nums text-ink">
+            {scans.toLocaleString("fr-FR")}
+          </dd>
+          <dt className="text-[13px] text-ink/60">Scans enregistrés</dt>
+        </div>
+        <div>
+          <dd className="text-[20px] font-bold tabular-nums text-ink">
+            {authorized.toLocaleString("fr-FR")}
+          </dd>
+          <dt className="text-[13px] text-ink/60">Accès accordés</dt>
+        </div>
+      </dl>
+
       {disabled ? (
-        <div
+        <p
           className={cn(
-            "rounded-btn border border-dashed px-3 py-2 text-center text-[11.5px] font-semibold",
+            "rounded-btn border border-dashed px-4 py-3 text-center text-[13.5px] font-semibold",
             inactive
-              ? "border-ink/20 text-ink/50"
-              : "border-amber-300/60 text-amber-800"
+              ? "border-ink/20 text-ink/55"
+              : "border-amber-300 bg-amber-50 text-amber-900"
           )}
-          aria-hidden={false}
         >
           {inactive
-            ? "Scanner indisponible — point désactivé"
+            ? "Scanner indisponible : point désactivé"
             : "Vous n'êtes pas autorisé à opérer ce scanner"}
-        </div>
+        </p>
       ) : (
         <Link
           href={`/admin/scan/${slug}`}
-          className="inline-flex items-center justify-center gap-2 rounded-btn bg-cobalt px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-cobalt-700"
+          className="inline-flex items-center justify-center gap-2 rounded-btn bg-cobalt px-4 py-3 text-[14.5px] font-bold text-white transition-colors hover:bg-cobalt-700"
           aria-label={`Ouvrir le scanner du point ${name}`}
         >
-          Ouvrir le scanner →
+          Ouvrir le scanner
+          <span aria-hidden>→</span>
         </Link>
       )}
     </li>
+  );
+}
+
+function GateIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+      <path d="M2 21h20M12 12h.01" />
+      <path d="M16 8h2a2 2 0 0 1 2 2v11" />
+    </svg>
+  );
+}
+
+function RoomIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M8 20h8M12 16v4" />
+    </svg>
   );
 }

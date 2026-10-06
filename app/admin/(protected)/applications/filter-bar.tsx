@@ -1,74 +1,64 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useTransition } from "react";
-import {
-  APPLICATION_STATUSES,
-  APPLICATION_STATUS_LABEL,
-  APPLICATION_TYPES,
-  APPLICATION_TYPE_LABEL
-} from "@/lib/applications";
+import { useEffect, useState, useTransition } from "react";
+import { cn } from "@/lib/utils";
 
-export function ApplicationsFilterBar({ total }: { total: number }) {
+// Search box + result count. Role and status filters are plain links
+// rendered by the page; this component only owns the free-text query.
+export function ApplicationsSearch({ total }: { total: number }) {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
+  const [q, setQ] = useState(params.get("q") ?? "");
 
-  function update(patch: Record<string, string | null>) {
-    const next = new URLSearchParams(params.toString());
-    for (const [key, value] of Object.entries(patch)) {
-      if (value == null || value === "" || value === "ALL") next.delete(key);
-      else next.set(key, value);
-    }
-    next.delete("page");
-    startTransition(() => {
-      router.push(`${pathname}?${next.toString()}`);
-    });
-  }
-
-  const q = params.get("q") ?? "";
-  const type = params.get("type") ?? "ALL";
-  const status = params.get("status") ?? "ALL";
+  useEffect(() => {
+    if ((params.get("q") ?? "") === q.trim()) return;
+    const t = setTimeout(() => {
+      const next = new URLSearchParams(params.toString());
+      if (q.trim()) next.set("q", q.trim());
+      else next.delete("q");
+      next.delete("page");
+      startTransition(() => {
+        router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+      });
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-white p-3">
-      <input
-        type="search"
-        defaultValue={q}
-        placeholder="Rechercher (nom, email, organisation)…"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") update({ q: e.currentTarget.value });
-        }}
-        className="min-w-[240px] flex-1 rounded-btn border border-line bg-white px-3 py-2 text-[13px] outline-none transition-colors focus:border-cobalt"
-      />
-      <select
-        value={type}
-        onChange={(e) => update({ type: e.target.value })}
-        className="rounded-btn border border-line bg-white px-3 py-2 text-[13px] outline-none transition-colors focus:border-cobalt"
+    <div className="flex items-center gap-4">
+      <label className="relative block w-full min-w-[260px] lg:w-[320px]">
+        <span className="sr-only">Rechercher une candidature</span>
+        <svg
+          className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ink/45"
+          viewBox="0 0 20 20"
+          fill="none"
+          aria-hidden
+        >
+          <circle cx="9" cy="9" r="6.25" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M14 14l3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Nom, email ou organisation"
+          className="w-full rounded-btn border border-line bg-white py-2.5 pl-10 pr-3 text-[14px] text-ink outline-none transition-colors placeholder:text-ink/40 focus:border-cobalt focus:ring-2 focus:ring-cobalt/10"
+        />
+      </label>
+      <p
+        className={cn(
+          "shrink-0 text-[13.5px] font-semibold tabular-nums text-ink/60",
+          pending && "animate-pulse text-cobalt"
+        )}
       >
-        <option value="ALL">Tous les rôles</option>
-        {APPLICATION_TYPES.map((t) => (
-          <option key={t} value={t}>
-            {APPLICATION_TYPE_LABEL[t]}
-          </option>
-        ))}
-      </select>
-      <select
-        value={status}
-        onChange={(e) => update({ status: e.target.value })}
-        className="rounded-btn border border-line bg-white px-3 py-2 text-[13px] outline-none transition-colors focus:border-cobalt"
-      >
-        <option value="ALL">Tous les statuts</option>
-        {APPLICATION_STATUSES.map((s) => (
-          <option key={s} value={s}>
-            {APPLICATION_STATUS_LABEL[s]}
-          </option>
-        ))}
-      </select>
-      <span className="ml-auto text-[11.5px] font-semibold uppercase tracking-[0.18em] text-ink/50 tabular-nums">
-        {total} résultat{total > 1 ? "s" : ""}
-      </span>
+        {pending
+          ? "Actualisation…"
+          : `${total.toLocaleString("fr-FR")} résultat${total > 1 ? "s" : ""}`}
+      </p>
     </div>
   );
 }
